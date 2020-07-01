@@ -1,0 +1,318 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BDT Maker &#8212; MVA_studies  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to MVA_studies’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="bdt-maker">
+<h1>BDT Maker<a class="headerlink" href="#bdt-maker" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="Utilities.MvaMaker.XGBoostMaker">
+<em class="property">class </em><code class="sig-prename descclassname">Utilities.MvaMaker.</code><code class="sig-name descname">XGBoostMaker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">use_vars</span></em>, <em class="sig-param"><span class="n">spec_vars</span></em>, <em class="sig-param"><span class="n">cuts</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.add_group">
+<code class="sig-name descname">add_group</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inNames</span></em>, <em class="sig-param"><span class="n">outName</span></em>, <em class="sig-param"><span class="n">infile</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.add_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.add_group" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.cutFrame">
+<code class="sig-name descname">cutFrame</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">frame</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.cutFrame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.cutFrame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduce frame using root style cut string</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>frame</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.output">
+<code class="sig-name descname">output</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outname</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrapper for write out commands</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>outname</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.train">
+<code class="sig-name descname">train</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.train" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.train_single">
+<code class="sig-name descname">train_single</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">groupName</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.train_single"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.train_single" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.writeOutPandas">
+<code class="sig-name descname">writeOutPandas</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outname</span></em>, <em class="sig-param"><span class="n">workSet</span></em>, <em class="sig-param"><span class="n">prediction</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.writeOutPandas"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.writeOutPandas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out pandas file as a pickle file that is compressed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outname</strong> – </p></li>
+<li><p><strong>workSet</strong> – </p></li>
+<li><p><strong>prediction</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MvaMaker.XGBoostMaker.writeOutRoot">
+<code class="sig-name descname">writeOutRoot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outfile</span></em>, <em class="sig-param"><span class="n">treeName</span></em>, <em class="sig-param"><span class="n">workSet</span></em>, <em class="sig-param"><span class="n">prediction</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MvaMaker.html#XGBoostMaker.writeOutRoot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MvaMaker.XGBoostMaker.writeOutRoot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out as a rootfile</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outfile</strong> – </p></li>
+<li><p><strong>treeName</strong> – </p></li>
+<li><p><strong>workSet</strong> – </p></li>
+<li><p><strong>prediction</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="mva-outputer">
+<h1>MVA Outputer<a class="headerlink" href="#mva-outputer" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="Utilities.MVAPlotter.MVAPlotter">
+<em class="property">class </em><code class="sig-prename descclassname">Utilities.MVAPlotter.</code><code class="sig-name descname">MVAPlotter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">workdir</span></em>, <em class="sig-param"><span class="n">groups</span></em>, <em class="sig-param"><span class="n">lumi</span><span class="o">=</span><span class="default_value">140000</span></em>, <em class="sig-param"><span class="n">is_train</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.add_variable">
+<code class="sig-name descname">add_variable</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.add_variable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.add_variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add variable to MVAPlotter object
+(nice for plotting or moving to root based code)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.apply_cut">
+<code class="sig-name descname">apply_cut</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cut</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.apply_cut"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.apply_cut" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cut DataFrame using Root Style cut string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.apply_cut_max_bdt">
+<code class="sig-name descname">apply_cut_max_bdt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sample</span></em>, <em class="sig-param"><span class="n">is_max</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.apply_cut_max_bdt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.apply_cut_max_bdt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cut on file by with sample has largest BDT value</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.approx_likelihood">
+<code class="sig-name descname">approx_likelihood</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">bkg</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.approx_likelihood"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.approx_likelihood" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Basic max Likelihood significance</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_fom">
+<code class="sig-name descname">get_fom</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">bkg</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">sb_denom</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">reverse</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_fom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_fom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return FoM histogram</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_hist">
+<code class="sig-name descname">get_hist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">groups</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_hist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_hist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get numpy histogram of a variable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_hist_2d">
+<code class="sig-name descname">get_hist_2d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">groups</span></em>, <em class="sig-param"><span class="n">var1</span></em>, <em class="sig-param"><span class="n">var2</span></em>, <em class="sig-param"><span class="n">bins</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_hist_2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_hist_2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get numpy 2d histogram for 2 variables</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_hist_err2">
+<code class="sig-name descname">get_hist_err2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">groups</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_hist_err2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_hist_err2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get numpy histogram of variable squared (poisson err if sqrt)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_hist_err2_2d">
+<code class="sig-name descname">get_hist_err2_2d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">groups</span></em>, <em class="sig-param"><span class="n">var1</span></em>, <em class="sig-param"><span class="n">var2</span></em>, <em class="sig-param"><span class="n">bins</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_hist_err2_2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_hist_err2_2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get numpy 2d histogram for 2 variables squared</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_sample">
+<code class="sig-name descname">get_sample</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">groups</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_sample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get DataFrame but requiring group to be one of the included in ‘groups’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.get_variable">
+<code class="sig-name descname">get_variable</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">groups</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.get_variable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.get_variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get numpy array of variable (under group contraint if wanted)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.make_roc">
+<code class="sig-name descname">make_roc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">bkg</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">extra_name</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.make_roc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.make_roc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make and Save ROC curve for variable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.plot_all_shapes">
+<code class="sig-name descname">plot_all_shapes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">extra_name</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.plot_all_shapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.plot_all_shapes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot all groups (normalized to 1) to compare shapes</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.plot_fom">
+<code class="sig-name descname">plot_fom</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">bkg</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">extra_name</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">sb_denom</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">reverse</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.plot_fom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.plot_fom" title="Permalink to this definition">¶</a></dt>
+<dd><p>plot figure of merit</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.plot_fom_2d">
+<code class="sig-name descname">plot_fom_2d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">var1</span></em>, <em class="sig-param"><span class="n">var2</span></em>, <em class="sig-param"><span class="n">bins1</span></em>, <em class="sig-param"><span class="n">bins2</span></em>, <em class="sig-param"><span class="n">extra_name</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.plot_fom_2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.plot_fom_2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>plot figure of merit but using 2d scan
+Returns info on max bin and max StoB</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.plot_func">
+<code class="sig-name descname">plot_func</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sig</span></em>, <em class="sig-param"><span class="n">bkg</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">bins</span></em>, <em class="sig-param"><span class="n">extra_name</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">scale</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.plot_func"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.plot_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>plot arbitrary variable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.plot_func_2d">
+<code class="sig-name descname">plot_func_2d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">samples</span></em>, <em class="sig-param"><span class="n">var1</span></em>, <em class="sig-param"><span class="n">var2</span></em>, <em class="sig-param"><span class="n">bins1</span></em>, <em class="sig-param"><span class="n">bins2</span></em>, <em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">lines</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.plot_func_2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.plot_func_2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>plot 2 arbitrary variable (no differnt groups!)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.print_info">
+<code class="sig-name descname">print_info</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">subgroups</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.print_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.print_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>print out basic statistics information for all groups for a variable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.set_show">
+<code class="sig-name descname">set_show</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">do_show</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.set_show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.set_show" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set do_show to a value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>do_show</strong> (<em>bool</em>) – If Matplotlib show show plots</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="Utilities.MVAPlotter.MVAPlotter.write_out">
+<code class="sig-name descname">write_out</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">input_tree</span></em>, <em class="sig-param"><span class="n">rm_groups</span><span class="o">=</span><span class="default_value">['Unnamed: 0', 'GroupName', 'classID', 'finalWeight', 'newWeight']</span></em>, <em class="sig-param"><span class="n">chan</span><span class="o">=</span><span class="default_value">'SS'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Utilities/MVAPlotter.html#MVAPlotter.write_out"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#Utilities.MVAPlotter.MVAPlotter.write_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write DataFrame out to ROOT file compatible with VVPlotter</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">MVA_studies</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">BDT Maker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#mva-outputer">MVA Outputer</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to MVA_studies’s documentation!</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Dylan Teague.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/code.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
