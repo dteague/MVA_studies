@@ -1,3 +1,9 @@
+"""
+.. module:: MVAPlotter
+   :synopsis: Takes MvaMaker output and creates graphs
+.. moduleauthor:: Dylan Teague
+"""
+
 import sys
 import math
 import numpy as np
@@ -52,8 +58,10 @@ class MVAPlotter(object):
         return len(self.groups)
 
     def set_show(self, do_show):
-        """
-        Set do_show to a value
+        """Set do_show to a value
+
+        :param do_show: If Matplotlib show show plots
+        :type do_show: bool
         """
         self.do_show = do_show
 

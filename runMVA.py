@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-import os, math, sys
-import copy
-import numpy as np
+import os
 import argparse
+import numpy as np
+
 from Utilities.MvaMaker import XGBoostMaker
 from Utilities.MVAPlotter import MVAPlotter
-import matplotlib.pyplot as plt
 
 
 # Command line arguments
@@ -21,11 +20,11 @@ args = parser.parse_args()
 usevar = ["NJets", "NBJets", "HT", "MET", "l1Pt", "l2Pt", "lepMass", "centrality", "j1Pt", "j2Pt", "j3Pt", "j4Pt", "j5Pt", "j6Pt", "j7Pt", "j8Pt", "jetMass", "jetDR", "b1Pt", "b2Pt", "b3Pt", "b4Pt", "Shape1", "Shape2", "NlooseBJets", "NtightBJets", "NlooseLeps", "LepCos", "JetLep1_Cos", "JetLep2_Cos", "JetBJet_DR", "Lep_DR", "JetBJet_Cos"]
 
 # Variables outputed (not used in training)
-specVar= ["newWeight", "DilepCharge", "weight"]
+specVar = ["newWeight", "DilepCharge", "weight"]
 
 outname = args.out
-lumi=args.lumi*1000
-cut = 'HT>150&&DilepCharge>0&&MET>25'
+lumi = args.lumi*1000
+CUT = '' #'HT>150&&DilepCharge>0&&MET>25'
 
 if not os.path.isdir(outname):
     os.mkdir(outname)
@@ -33,49 +32,60 @@ if not os.path.isdir(outname):
 ##################
 # Set background #
 ##################
+groups = [["Signal", ["tttj", "tttw", ]],
+          ["FourTop", ["tttt2016", ]],
+          ["Background", ["ttw", "ttz", "tth2nonbb",
+                          "ttww", "ttwh", "ttzz", "ttzh", "ttwz",
+                          "www", "wwz", "wzz", "zzz", "zz4l_powheg",
+                          "wwg", "wzg", "ggh2zz", "wg", "ttg_dilep",
+                          "tzq", "st_twll", "DYm50", "wz3lnu_mg5amcnlo",
+                          "ww_doubleScatter", "wpwpjj_ewk",
+                          "ttg_lepfromTbar", "ttg_lepfromT", ]]
+          ]
+groups = np.array(groups)
+GROUP_NAMES = np.transpose(groups)[0]
 
-groups = np.array([["Signal", ["tttj", "tttw"]],
-                   ["FourTop", ["tttt2016",]],
-                   ["Background", ["ttw", "ttz", "tth2nonbb", "ttww", "ttg_lepfromTbar", "ttg_lepfromT", "ttwh", "ttzz", "ttzh",  "ttwz", "www", "wwz", "wzz", "zzz", "zz4l_powheg", "wz3lnu_mg5amcnlo", "ww_doubleScatter", "wpwpjj_ewk", "ttg_dilep", "wwg", "wzg","ggh2zz", "wg", "tzq", "st_twll", "DYm50",]],
-])
-
-inputTree = "inputTrees_new.root"
-groupOrdered = [item for sublist in [l[1] for l in groups] for item in sublist]
+INPUT_TREE = "inputTrees_new.root"
+groupOrdered = np.concatenate(np.transpose(groups)[1]).ravel()
 
 ############
 # training #
 ############
 
 if args.train:
-    mvaRunner = XGBoostMaker(inputTree)       
-    mvaRunner.addVariables(usevar, specVar)
-    mvaRunner.addCut(cut)
+    import uproot
+    infile = uproot.open(INPUT_TREE)
+    mvaRunner = XGBoostMaker(usevar, specVar, CUT)
     for groupName, samples in groups:
-        mvaRunner.addGroup(samples, groupName)
-    
+        mvaRunner.add_group(samples, groupName, infile)
+
     # Use this if multiclass Train
     mvaRunner.train()
     # Use something like this if want binary (trains name against all)
     #
     # mvaRunner.train("Signal")
     mvaRunner.output(outname)
+    # self.fitModel.save_model("{}/model.bin".format(outname))
+    
 
 ###############
 # Make Plots  #
 ###############
 stobBins = np.linspace(0.0, 1, 50)
-nbins2d=50
-stob2d = np.linspace(0.0,1.0,nbins2d+1)
+NBINS_2D = 50
+stob2d = np.linspace(0.0, 1.0, NBINS_2D + 1)
 
-output = MVAPlotter(outname, groups.T[0], lumi)
+output = MVAPlotter(outname, GROUP_NAMES, lumi)
 output.set_show(args.show)
 gSet = output.get_sample()
 
-output.write_out("preSelection_BDT.2020.06.03_single.root", inputTree)
+output.write_out("preSelection_BDT.2020.06.03_single.root", INPUT_TREE)
 output.plot_fom("Signal", ["Background"], "BDT.Signal", stobBins, "")
 output.make_roc("Signal", ["FourTop", "Background"], "Signal", "SignalvsAll")
 output.print_info("BDT.Signal", groupOrdered)
-output.plot_all_shapes("NJets", np.linspace(0,15,16), "allGroups")
+output.plot_all_shapes("NJets", np.linspace(0, 15, 16), "allGroups")
+output.plot_all_shapes("MET", np.linspace(0, 500, 50), "allGroups")
+output.plot_all_shapes("HT", np.linspace(0, 1500, 50), "allGroups")
 
 print("FourTop: ", output.approx_likelihood("Signal", ["Background", "FourTop"], "BDT.FourTop", stobBins))
 print("Background: ", output.approx_likelihood("Signal", ["Background", "FourTop"], "BDT.Background", stobBins))
@@ -90,14 +100,8 @@ output.plot_func_2d("Background", "BDT.Background", "BDT.FourTop",
 output.plot_func_2d("FourTop", "BDT.Background", "BDT.FourTop",
                     stob2d, stob2d, "FourTop", lines=maxSBVal[1:])
 
-        
-output.apply_cut("BDT.FourTop>{}".format(maxSBVal[2]))
-output.apply_cut("BDT.Background>{}".format(maxSBVal[1]))
 
-output.write_out("postSelection_BDT.2020.06.03_SignalSingle.root", inputTree)
+# output.apply_cut("BDT.FourTop>{}".format(maxSBVal[2]))
+# output.apply_cut("BDT.Background>{}".format(maxSBVal[1]))
 
-
-
-
-
-
+# output.write_out("postSelection_BDT.2020.06.03_SignalSingle.root", inputTree)
