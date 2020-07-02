@@ -16,22 +16,23 @@ parser.add_argument('-l', '--lumi', type=float, default=140., help='Luminosity t
 args = parser.parse_args()
 
 
+##################
+# User Variables #
+##################
+
 # Variables used in Training
 usevar = ["NJets", "NBJets", "HT", "MET", "l1Pt", "l2Pt", "lepMass", "centrality", "j1Pt", "j2Pt", "j3Pt", "j4Pt", "j5Pt", "j6Pt", "j7Pt", "j8Pt", "jetMass", "jetDR", "b1Pt", "b2Pt", "b3Pt", "b4Pt", "Shape1", "Shape2", "NlooseBJets", "NtightBJets", "NlooseLeps", "LepCos", "JetLep1_Cos", "JetLep2_Cos", "JetBJet_DR", "Lep_DR", "JetBJet_Cos"]
 
 # Variables outputed (not used in training)
 specVar = ["newWeight", "DilepCharge", "weight"]
 
-outname = args.out
-lumi = args.lumi*1000
+# Root style cut string used for preselection
 CUT = '' #'HT>150&&DilepCharge>0&&MET>25'
 
-if not os.path.isdir(outname):
-    os.mkdir(outname)
+# Input Rootfile
+INPUT_TREE = "inputTrees_new.root"
 
-##################
-# Set background #
-##################
+# Sampels and the groups they are a part of
 groups = [["Signal", ["tttj", "tttw", ]],
           ["FourTop", ["tttt2016", ]],
           ["Background", ["ttw", "ttz", "tth2nonbb",
@@ -40,12 +41,18 @@ groups = [["Signal", ["tttj", "tttw", ]],
                           "wwg", "wzg", "ggh2zz", "wg", "ttg_dilep",
                           "tzq", "st_twll", "DYm50", "wz3lnu_mg5amcnlo",
                           "ww_doubleScatter", "wpwpjj_ewk",
-                          "ttg_lepfromTbar", "ttg_lepfromT", ]]
-          ]
+                          "ttg_lepfromTbar", "ttg_lepfromT", ]]]
+
+######################
+# End User Variables #
+######################
+
+outname = args.out
+lumi = args.lumi*1000
+if not os.path.isdir(outname):
+    os.mkdir(outname)
 groups = np.array(groups)
 GROUP_NAMES = np.transpose(groups)[0]
-
-INPUT_TREE = "inputTrees_new.root"
 groupOrdered = np.concatenate(np.transpose(groups)[1]).ravel()
 
 ############
@@ -60,12 +67,13 @@ if args.train:
         mvaRunner.add_group(samples, groupName, infile)
 
     # Use this if multiclass Train
-    mvaRunner.train()
+    fitModel = mvaRunner.train()
+    fitModel.save_model("{}/model.bin".format(outname))
     # Use something like this if want binary (trains name against all)
     #
-    # mvaRunner.train("Signal")
+    # fitModel_signal = mvaRunner.train_single("Signal")
     mvaRunner.output(outname)
-    # self.fitModel.save_model("{}/model.bin".format(outname))
+    
     
 
 ###############

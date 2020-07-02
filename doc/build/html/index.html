@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to MVA_studies’s documentation! &#8212; MVA_studies  documentation</title>
+    <title>Installation Guide &#8212; MVA_studies  documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="BDT Maker" href="code.html" />
+    <link rel="next" title="Running the code" href="running.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -32,11 +32,48 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-mva-studies-s-documentation">
-<h1>Welcome to MVA_studies’s documentation!<a class="headerlink" href="#welcome-to-mva-studies-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="installation-guide">
+<h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Permalink to this headline">¶</a></h1>
+<p>To install, the requirements are python and ROOT. For ease, this guide with assume one is using a virtual environment. If you are using ROOT 6.20 or greater, you can use python3. If you are using a version older than this (CMSSW areas use 6.12), use python2.7.</p>
+<div class="section" id="python2-7-cmssw-area">
+<h2>Python2.7 (CMSSW area)<a class="headerlink" href="#python2-7-cmssw-area" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python2</span><span class="o">.</span><span class="mi">7</span> <span class="o">-</span><span class="n">m</span> <span class="n">virtualenv</span> <span class="n">env</span>
+<span class="n">source</span> <span class="n">env</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="python3">
+<h2>Python3<a class="headerlink" href="#python3" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="o">-</span><span class="n">m</span> <span class="n">venv</span> <span class="n">env</span>
+<span class="n">source</span> <span class="n">env</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> if you are new to virtual environments, to exit it, simply type <code class="docutils literal notranslate"><span class="pre">deactivate</span></code>. You will need to make sure virtual environment is activated every time you want to run the code</p>
+</div>
+</div>
+<div class="section" id="quick-start">
+<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<p>To run the code, simply type</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./runMVA.py -o &lt;Output Dir&gt; -t  <span class="c1"># OR</span>
+./runMVA.py -o &lt;Output Dir&gt;     <span class="c1"># Without training (just plotting)</span>
+</pre></div>
+</div>
+<p>Or if you need more information, just run <code class="docutils literal notranslate"><span class="pre">./runMVA.py</span> <span class="pre">--help</span></code></p>
+</div>
+<div class="section" id="mva-studies-documentation">
+<h1>MVA_studies’ documentation<a class="headerlink" href="#mva-studies-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running the code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="running.html#training">Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#plotting">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#output">Output</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="code.html">BDT Maker</a></li>
 <li class="toctree-l1"><a class="reference internal" href="code.html#mva-outputer">MVA Outputer</a></li>
 </ul>
@@ -69,7 +106,9 @@
 
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running the code</a></li>
 <li class="toctree-l1"><a class="reference internal" href="code.html">BDT Maker</a></li>
 <li class="toctree-l1"><a class="reference internal" href="code.html#mva-outputer">MVA Outputer</a></li>
 </ul>
@@ -78,7 +117,7 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="#">Documentation overview</a><ul>
-      <li>Next: <a href="code.html" title="next chapter">BDT Maker</a></li>
+      <li>Next: <a href="running.html" title="next chapter">Running the code</a></li>
   </ul></li>
 </ul>
 </div>
