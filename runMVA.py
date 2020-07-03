@@ -64,7 +64,7 @@ if args.train:
     infile = uproot.open(INPUT_TREE)
     mvaRunner = XGBoostMaker(usevar, specVar, CUT)
     for groupName, samples in groups:
-        mvaRunner.add_group(samples, groupName, infile)
+        mvaRunner.add_group(groupName, samples, infile)
 
     # Use this if multiclass Train
     fitModel = mvaRunner.train()

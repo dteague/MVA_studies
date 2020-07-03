@@ -32,6 +32,8 @@ Python3
 Quick Start
 ===========
 
+Before starting, you need to make sure you grab ``/afs/cern.ch/user/d/dteague/public/For_Deborah/inputTrees_new.root`` if you are on a computer connected to afs, or ``scp`` the file to your personal computer
+
 To run the code, simply type
 
 .. code-block:: bash

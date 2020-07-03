@@ -16,18 +16,26 @@ import xgboost as xgb
 
 
 class MVAPlotter(object):
+    """Wrapper for a bunch of plotting and outputing functions
+
+    Args:
+      groups(list): List of group names
+      do_show(bool): Bool for if matplotlib should show its graphs
+      save_dir(string): Directory name to save all plots
+      lumi(float): Luminosity (in ipb)
+      color_dict(dict: dict): Dictionary for setting line color for groups
+      work_set(pandas.DataFrame): DataFrame with event/variable data
+    """
     def __init__(self, workdir, groups, lumi=140000, is_train=False):
         self.groups = list(groups)
         self.do_show = False
         self.save_dir = workdir
-        self.lumi=lumi
+        self.lumi = lumi
         colors = ['#f15854', '#faa43a', '#60bd68', '#5da5da']
         #  ['#CC0000', '#99FF00', '#FFCC00', '#3333FF']
         #  ['#462066', '#FFB85F', '#FF7A5A', '#00AAA0']
 
-        self.color_dict = dict()
-        for i, group in enumerate(self.groups):
-            self.color_dict[group] = colors[i]
+        self.color_dict = {grp: col for grp, col in zip(groups, colors)}
         self.color_dict["all"] = colors[len(self.groups)]
 
         if is_train:
@@ -37,8 +45,9 @@ class MVAPlotter(object):
             self.work_set = pd.read_pickle("{}/testTree.pkl.gz".format(workdir))
             other = pd.read_pickle("{}/trainTree.pkl.gz".format(workdir))
 
-        self.train_test_ratio = 1 + 1.0*len(other)/len(self.work_set)
-        self.work_set.insert(1, "finalWeight", self.train_test_ratio * lumi * self.work_set["newWeight"])
+        self._ratio = (1. + 1.*len(other)/len(self.work_set))
+        self.work_set.insert(1, "finalWeight", self._ratio * lumi \
+                             * self.work_set["newWeight"])
 
         # was this multilcass or multiple binaries (maybe outdated)
         multirun = all(elem in self.work_set for elem in self.groups)
@@ -52,31 +61,44 @@ class MVAPlotter(object):
             else:
                 self.work_set.insert(1, "BDT.{}".format(group),
                                      self.work_set[group])
-            self.work_set = self.work_set.drop(columns=group)
+                self.work_set.drop(columns=group, inplace=True)
 
     def __len__(self):
         return len(self.groups)
 
     def set_show(self, do_show):
-        """Set do_show to a value
+        """**Set do_show to a value**
 
-        :param do_show: If Matplotlib show show plots
-        :type do_show: bool
+        Args:
+          do_show(bool): If Matplotlib show show plots
         """
         self.do_show = do_show
 
     def add_variable(self, name, arr):
-        """ Add variable to MVAPlotter object
-        (nice for plotting or moving to root based code)
+        """**Add variable to MVAPlotter object**
+
+        If one needs to make a unique, composite variable, this allows
+        the user to add it to the DataFrame
+
+        Args:
+          name(string): Name of variable for the DataFrame
+          arr(numpy.ndarray): Array of variable values for the DataFrame
         """
         if len(arr) != len(self.work_set):
             print("bad!")
             sys.exit()
         self.work_set.insert(1, name, arr)
 
-    def apply_cut_max_bdt(self, sample, is_max=False):
-        """
-        Cut on file by with sample has largest BDT value
+    def apply_cut_max_bdt(self, sample, is_max=True):
+        """**Cut on which BDT is maximum**
+
+        Cut on file by only keeping the events where the BDT with the
+        maximum value matches the sample provided. There is a `is_max`
+        flag to allow the inverse cut
+
+        Args:
+          sample(string): Sample BDT that must be maximized
+          is_max(bool, optional): whether to keep only maxBDT or all BUT, defaults to True
         """
         bdt = list()
         for group in self.groups:
@@ -92,8 +114,10 @@ class MVAPlotter(object):
             self.work_set = self.work_set[max_bdt != self.groups.index(sample)]
 
     def apply_cut(self, cut):
-        """
-        Cut DataFrame using Root Style cut string
+        """**Cut DataFrame using Root Style cut string**
+
+        Args:
+          cut(string): Cut string
         """
         if cut.find("<") != -1:
             tmp = cut.split("<")
@@ -109,14 +133,23 @@ class MVAPlotter(object):
             sys.exit()
 
     def get_sample(self, groups=None):
-        """
-        Get DataFrame but requiring group to be one of the included in 'groups'
+        """**Get DataFrame matching the groups**
+
+        .. note:: groups set to None (the default) means the whole
+                  DataFrame is returned
+
+        Args:
+          groups(list, optional): list of groups to include, defaults to None
+
+        Returns:
+          pandas.DataFrame: DataFrame including only groups specified (None means all
+          groups)
         """
         # Not list, just single instance
         if isinstance(groups, str):
             return self.work_set[self.work_set["classID"] == self.groups.index(groups)]
         elif not isinstance(groups, (list, np.ndarray)):
-            groups = self.groups
+            return self.work_set
 
         # if is a list
         final_set = pd.DataFrame(columns=self.work_set.columns)
@@ -126,50 +159,106 @@ class MVAPlotter(object):
         return final_set
 
     def get_variable(self, var, groups=None):
-        """
-        Get numpy array of variable (under group contraint if wanted)
+        """**Get numpy array of variable**
+
+        .. note:: This function uses `get_sample` so groups=None means all groups included
+
+        Args:
+          var(string): Variable returned
+          groups(list, optional): list of groups to include, defaults to None
+
+        Returns:
+          numpy.ndarray: Array of the variable (under the group constraint)
+
         """
         return self.get_sample(groups)[var]
 
     def get_hist(self, var, bins, groups=None):
-        """
+        """**Get Histogram of variable**
+
         Get numpy histogram of a variable
+
+        Args:
+          var(string): Variable to put in the histogram
+          bins(numpy.ndarray): numpy array of bins
+          groups(list, optional): list of groups to include, defaults to None (means all)
+
+        Returns:
+          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable
+
         """
         final_set = self.get_sample(groups)
         return np.histogram(final_set[var], bins=bins,
                             weights=final_set["finalWeight"])[0]
 
     def get_hist_err2(self, var, bins, groups=None):
-        """
+        """**Get Error squared histogram for variable**
+
         Get numpy histogram of variable squared (poisson err if sqrt)
+
+        Args:
+          var(string): Variable to put in the histogram
+          bins(numpy.ndarray): numpy array of bins
+          groups(list, optional): list of groups to include, defaults to None (means all)
+
+        Returns:
+          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable
+
         """
         final_set = self.get_sample(groups)
         return np.histogram(final_set[var], bins=bins,
                             weights=final_set["finalWeight"]*final_set["finalWeight"])[0]
 
-    def get_hist_2d(self, groups, var1, var2, bins):
-        """
-        Get numpy 2d histogram for 2 variables
+    def get_hist_2d(self, var1, var2, bins, groups=None):
+        """**Get numpy 2D histogram for 2 variables**
+
+        Args:
+          var1(string): Variable 1 for the x-axis
+          var2(string): Variable 2 for the y-axis
+          bins(numpy.ndarray): numpy array of bins
+          groups(list, optional): list of groups to include, defaults to None (means all)
+
+        Returns:
+          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable
+
         """
         final_set = self.get_sample(groups)
         return np.histogram2d(x=final_set[var1], y=final_set[var2], bins=bins,
                               weights=final_set["finalWeight"])[0]
 
-    def get_hist_err2_2d(self, groups, var1, var2, bins):
-        """
-        Get numpy 2d histogram for 2 variables squared
+    def get_hist_err2_2d(self, var1, var2, bins, groups=None):
+        """**Get numpy 2d histogram for 2 variables squared**
+
+        Poisson error can be found by sqrting this histogram
+
+        Args:
+          var1(string): Variable 1 for the x-axis
+          var2(string): Variable 2 for the y-axis
+          bins(numpy.ndarray): numpy array of bins
+          groups(list, optional): list of groups to include, defaults to None (means all)
+
+        Returns:
+          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable
+
         """
         final_set = self.get_sample(groups)
         return np.histogram2d(x=final_set[var1], y=final_set[var2], bins=bins,
                               weights=final_set["finalWeight"]*final_set["finalWeight"])[0]
 
     def plot_func(self, sig, bkg, var, bins, extra_name="", scale=True):
-        """
-        plot arbitrary variable
+        """**Plot arbitrary variable**
+
+        Args:
+          sig(string): Primary group to be plotted
+          bkg(string): Other groups to be plotted against sig
+          var(string): Variable graphed
+          bins(numpy.ndarray): numpy array of bins
+          extra_name(string, optional): name to append to filename, defaults to ""
+          scale(bool, optional): whether to scale sig up to bkg, defaults to True
         """
         sig_hist = self.get_hist(var, bins, sig)
         bkg_hist = self.get_hist(var, bins, bkg)
-        scale = findScale(max(sig_hist), max(bkg_hist)) if scale else 1.
+        scale = self._find_scale(max(sig_hist), max(bkg_hist)) if scale else 1.
         bkg_name = "all" if len(bkg) > 1 else bkg[0]
         sig_name = sig if scale == 1 else "{} x {}".format(sig, scale)
         if extra_name:
@@ -189,10 +278,23 @@ class MVAPlotter(object):
         plt.savefig("%s/%s%s.png" % (self.save_dir, var, extra_name))
         if self.do_show:
             plt.show()
-        plt.close()
+            plt.close()
 
-    def plot_func_2d(self, samples, var1, var2, bins1, bins2, name, lines=None):
-        """plot 2 arbitrary variable (no differnt groups!)"""
+    def plot_func_2d(self, samples, var1, var2, bins1, bins2, name,
+                     lines=None):
+        """**plot 2 arbitrary variable**
+
+        .. note:: This can't plot 2 groups at once!
+
+        Args:
+          samples: type samples:
+          var1(string): Variable 1 for the x-axis
+          var2(string): Variable 2 for the y-axis
+          bins1(numpy.ndarray): numpy array of bins for the x-axis
+          bins2(numpy.ndarray): numpy array of bins for the y-axis
+          name(string): name used for the plot
+          lines(list): Coordinate for point where lines will be draw, defaults to None
+        """
         grp = self.get_sample(samples)
         fig, ax = plt.subplots()
         hist2d = ax.hist2d(grp[var1], grp[var2], [bins1, bins2],
@@ -209,10 +311,23 @@ class MVAPlotter(object):
         plt.savefig("%s/2D_%s.png" % (self.save_dir, name))
         if self.do_show:
             plt.show()
-        plt.close()
+            plt.close()
 
-    def get_fom(self, sig, bkg, var, bins, sb_denom=True, reverse=True):
-        """Return FoM histogram"""
+    def get_fom(self, sig, bkg, var, bins, sb_denom=True, reverse=False):
+        """**Return FoM histogram**
+
+        Args:
+          sig(string): Primary group to be plotted
+          bkg(string): Other groups to be plotted against sig
+          var(string): Variable used to calculate Figure of Merit
+          bins(numpy.ndarray): numpy array of bins
+          sb_denom(bool, optional): If False, uses S/sqrt(B) instead of S/sqrt(S+B), defaults to True
+          reverse(bool, optional): if True, calculates FoM using LESS than not greater than, defaults to False
+
+        Returns:
+          rtype:
+
+        """
         drt = 1 if not reverse else -1
         sig_hist = self.get_hist(var, bins, sig)[::drt]
         bkg_hist = self.get_hist(var, bins, bkg)[::drt]
@@ -228,11 +343,29 @@ class MVAPlotter(object):
 
     def plot_fom(self, sig, bkg, var, bins, extra_name="", sb_denom=True,
                  reverse=False):
-        """plot figure of merit"""
+        """**Plots Figure of Merits for variable scan**
+
+        Plot figure of merit by creating a "signal region" by only
+        keeping events with a value of var greater than what value is
+        being scanned. One can use a cut that keeps events LESS than
+        the cut for var using the reverse flag.
+
+        Args:
+          sig(string): Primary group to be plotted
+          bkg(string): Other groups to be plotted against sig
+          var(string): Variable graphed
+          bins(numpy.ndarray): numpy array of bins
+          extra_name(string, optional): name to append to filename, defaults to ""
+          sb_denom(bool, optional): If False, uses S/sqrt(B) instead of S/sqrt(S+B), defaults to True
+          reverse(bool, optional): if True, calculates FoM using LESS than not greater than, defaults to False
+
+        Returns:
+          list: List of (FOM, bin) for the max FOM
+        """
         if extra_name:
             extra_name = "_{}".format(extra_name)
-        fom = self.get_fom(sig, bkg, var, bins, sb_denom, reverse)
-        fom_maxbin = bins[fom.index(max(fom))]
+            fom = self.get_fom(sig, bkg, var, bins, sb_denom, reverse)
+            fom_maxbin = bins[fom.index(max(fom))]
 
         fig, ax = plt.subplots()
 
@@ -252,27 +385,41 @@ class MVAPlotter(object):
         ax2.hist(x=bins[:-1], weights=bkg_hist, bins=bins, histtype="step",
                  linewidth=1.5, color=self.color_dict[bkg_name], density=True,
                  label=bkg_name)
-        # ax2.set_ylim(top=1.2*max(max(sig_hist)/sum(sig_hist),
-        #                          max(bkg_hist)/sum(bkg_hist)))
 
         if reverse:
             ax.set_title("Reversed Cumulative Direction")
-        ax.legend()
-        ax2.legend()
-        fig.tight_layout()
-        plt.savefig("%s/StoB_%s.png" % (self.save_dir, extra_name))
+            ax.legend()
+            ax2.legend()
+            fig.tight_layout()
+            plt.savefig("%s/StoB_%s.png" % (self.save_dir, extra_name))
         if self.do_show:
             plt.show()
-        plt.close()
+            plt.close()
+        return (fom, fom_maxbin)
 
     def plot_fom_2d(self, sig, var1, var2, bins1, bins2, extra_name=""):
-        """
-        plot figure of merit but using 2d scan
+        """**Plot Figure of Merit using a 2D scan**
+
+        Figure of merit is calculated by cutting on var1 and var2,
+        using the events with values greater than the cuts to define
+        the "signal region".
         Returns info on max bin and max StoB
+
+        Args:
+          sig(string): Group to plot in the graph
+          var1(string): Variable 1 for the x-axis
+          var2(string): Variable 2 for the y-axis
+          bins1(numpy.ndarray): numpy array of bins for the x-axis
+          bins2(numpy.ndarray): numpy array of bins for the y-axis
+          extra_name(string, optional): name to append to filename, defaults to ""
+
+        Returns:
+          list: List of (FOM, x value, y value) for the max FOM
+
         """
         if extra_name:
             extra_name = "_{}".format(extra_name)
-        grp_id = self.groups.index(sig)
+            grp_id = self.groups.index(sig)
 
         zvals = []
         xbins = list(bins1[:-1])*(len(bins2)-1)
@@ -287,7 +434,7 @@ class MVAPlotter(object):
                 fom = s/math.sqrt(s+b) if b+s > 0 else 0
                 if fom > max_fom[0]:
                     max_fom = (fom, valx, valy)
-                zvals.append(fom)
+                    zvals.append(fom)
 
         plt.hist2d(xbins, ybins, [bins1, bins2], weights=zvals,
                    cmap=plt.cm.jet)
@@ -302,8 +449,16 @@ class MVAPlotter(object):
         return max_fom
 
     def approx_likelihood(self, sig, bkg, var, bins):
-        """
-        Get Basic max Likelihood significance
+        """**Get Basic max Likelihood significance**
+
+        Args:
+          sig(string): Primary group to be plotted
+          bkg(string): Other groups to be plotted against sig
+          var(string): Variable used to calculate
+          bins(numpy.ndarray): numpy array of bins
+
+        Returns:
+          float: The Maximum Log Likelihood approximation (without errors)
         """
         sig_hist = self.get_hist(var, bins, sig)
         bkg_hist = self.get_hist(var, bins, bkg)
@@ -316,9 +471,15 @@ class MVAPlotter(object):
         return math.sqrt(2*(term1 - term2))
 
     def make_roc(self, sig, bkg, var, extra_name=""):
+        """Make and Save ROC curve for variable
+
+        Args:
+          sig(string): Primary group to be plotted
+          bkg(string): Other groups to be plotted against sig
+          var(string): Variable used to plot ROC curve
+          extra_name(string, optional): name to append to filename, defaults to ""
         """
-        Make and Save ROC curve for variable
-        """
+        # TODO(dylan) Need to generalize past just BDT variables
         final_set = pd.concat((self.get_sample(sig), self.get_sample(bkg)))
         pred = final_set["BDT.{}".format(var)].array
         if extra_name:
@@ -330,8 +491,8 @@ class MVAPlotter(object):
         else:
             truth = [1 if i == self.groups.index(sig) else 0
                      for i in final_set["classID"].array]
-        fpr, tpr, _ = roc_curve(truth, pred)
-        auc = roc_auc_score(truth, pred)
+            fpr, tpr, _ = roc_curve(truth, pred)
+            auc = roc_auc_score(truth, pred)
 
         # plot
         fig, ax = plt.subplots()
@@ -345,12 +506,18 @@ class MVAPlotter(object):
                     .format(self.save_dir, var, extra_name))
         if self.do_show:
             plt.show()
-        plt.close()
+            plt.close()
 
-    def write_out(self, filename, input_tree, rm_groups=["Unnamed: 0", "GroupName", "classID", "finalWeight", "newWeight"], chan="SS"):
+    def write_out(self, filename, input_tree, chan="SS"):
+        """**Write DataFrame out to ROOT file compatible with VVPlotter**
+
+        Args:
+          filename(string): Name the ROOT file is saved as
+          input_tree(string): input_tree filename used for getting sumweight graphs
+          chan(string, optional): Folder plots are put into, defaults to "SS"
         """
-        Write DataFrame out to ROOT file compatible with VVPlotter
-        """
+        rm_groups = ["Unnamed: 0", "GroupName", "classID", "finalWeight",
+                     "newWeight"]
         import ROOT
         sumweight_file = ROOT.TFile(input_tree)
         sumweights = dict()
@@ -359,7 +526,7 @@ class MVAPlotter(object):
                 continue
             sample = key.GetName()[10:]
             sumweights[sample] = key.ReadObj().GetBinContent(1)
-        sumweight_file.Close()
+            sumweight_file.Close()
 
         group_names = np.unique(self.work_set["GroupName"])
         var_info = dict()
@@ -367,7 +534,7 @@ class MVAPlotter(object):
             var = self.work_set[var_name]
             var_info[var_name] = [min(var), max(var),
                                   np.array_equal(var, var.astype(int))]
-        outfile = ROOT.TFile("{}/{}".format(self.save_dir, filename), "RECREATE")
+            outfile = ROOT.TFile("{}/{}".format(self.save_dir, filename), "RECREATE")
         for group in group_names:
             work_dir = outfile.mkdir(group)
             work_dir.cd()
@@ -391,16 +558,25 @@ class MVAPlotter(object):
                     if "Pt" in var_name and vals < 5:
                         continue
                     hist.Fill(vals, weight)
-                hist.Write()
-            sumweight_hist = ROOT.TH1D("sumweights", "sumweights", 10, 0, 1)
-            sumweight_hist.SetBinContent(1, sumweights[group]/(self.train_test_ratio))
-            sumweight_hist.Write()
-            outfile.cd()
-        outfile.Write()
+                    hist.Write()
+                    sumweight_hist = ROOT.TH1D("sumweights", "sumweights",
+                                               10, 0, 1)
+                    sumweight_hist.SetBinContent(1, sumweights[group])
+                    sumweight_hist.Scale(1/self._ratio)
+                    sumweight_hist.Write()
+                    outfile.cd()
+                    outfile.Write()
 
     def print_info(self, var, subgroups):
-        """
-        print out basic statistics information for all groups for a variable
+        """**Print out basic statistics information for a variable**
+
+        The information for each sample in a group includes the mean,
+        standard deviation, kurtosis, total weighted sum, total raw
+        events.
+
+        Args:
+          var(string): Variable used to print statistics
+          subgroups(list): list of all the samples for the information to be printed about
         """
         from scipy.stats import kurtosis
         info = list()
@@ -415,11 +591,15 @@ class MVAPlotter(object):
         for arr in info:
             print("|{:10} | {:.2f}| {} | {:.2f}+-{:.2f} | {:0.2f} |"
                   .format(arr[5], arr[3], arr[4], arr[0], arr[1], arr[2]))
-        print("-"*50)
+            print("-"*50)
 
     def plot_all_shapes(self, var, bins, extra_name=""):
-        """
-        Plot all groups (normalized to 1) to compare shapes
+        """**Plot all groups (normalized to 1) to compare shapes**
+
+        Args:
+          var(string): Variable graphed
+          bins(numpy.ndarray): numpy array of bins
+          extra_name(name: name to append to filename, defaults to "", optional): name to append to filename, defaults to ""
         """
         if extra_name:
             extra_name = "_{}".format(extra_name)
@@ -429,57 +609,35 @@ class MVAPlotter(object):
             ax.hist(x=bins[:-1], weights=self.get_hist(var, bins, group),
                     bins=bins, label=group, histtype="step", linewidth=1.5,
                     density=True)
-        ax.legend()
-        ax.set_xlabel(var)
-        ax.set_ylabel("A.U.")
-        ax.set_title("Lumi = {} ifb".format(self.lumi))
-        fig.tight_layout()
-        plt.savefig("{}/{}{}.png".format(self.save_dir, var, extra_name))
-        plt.close()
+            ax.legend()
+            ax.set_xlabel(var)
+            ax.set_ylabel("A.U.")
+            ax.set_title("Lumi = {} ifb".format(self.lumi))
+            fig.tight_layout()
+            plt.savefig("{}/{}{}.png".format(self.save_dir, var, extra_name))
+            plt.close()
 
-    # def setSHAP(self, useVar):
-    #     self.model = xgb.Booster({'nthread': 4})  # init model
-    #     self.model.load_model('{}/model.bin'.format(self.save_dir))  # load data
-    #     explainer = shap.TreeExplainer(self.model)
-    #     X_vals = self.work_set[useVar].sample(n=10000)
+    def _find_scale(self, s, b):
+        """**Find scale factor for signal to match rough size of background**
 
-    #     shap_values = explainer.shap_values(X_vals)
-    #     comb_vals = np.sum(shap_values, axis=0)
-    #     top_inds = np.argsort(-np.sum(np.abs(comb_vals), 0))
-    #     for f in  ["weight", "total_gain", "total_cover"]:
-    #         scoreList = np.array(sorted([[useVar[int(key[1:])], val] for key, val in self.model.get_score(importance_type= f).items()], key=lambda scores: scores[1])).T
-    #         nameSort = scoreList[0]
-    #         valSort = scoreList[1].astype(float)
-    #         index = np.arange(len(nameSort))
-    #         fig, ax = plt.subplots()
-    #         ax.barh(index, valSort)
-    #         ax.set_yticks(index)
-    #         ax.set_yticklabels(nameSort, rotation=15)
-    #         ax.set_title(f)
-    #         fig.set_size_inches(8, 8)
-    #         fig.tight_layout()
-    #         plt.savefig("{}/{}_list.png".format(self.save_dir, f))
-    #         plt.close()
+        Increases the scale for signal in a roughly logorithmic
+        pattern (1, 5, 10 , 50, 100, ...) to find where the signal and
+        background are roughly the same. This is used to make sure the
+        plots are scaled well enough to see signal and background
 
-    #     # # make SHAP plots of the three most important features
-    #     # for i in range(3):
-    #     #     shap.dependence_plot(top_inds[i], comb_vals, X_vals)
+        Args:
+          s(float): Number of signal events
+          b(float): Number of background events
 
-    #     #shap.force_plot(explainer.expected_value, shap_values[0,:], X.iloc[0,:])
-
-    #     f = plt.figure()
-    #     shap.summary_plot(shap_values, X_vals, plot_type="bar")
-    #     f.savefig("{}/SHAP_list.png".format(self.save_dir))
-    #     plt.close()
-
-
-def findScale(s, b):
-    scale = 1
-    prevS = 1
-    while b//(scale*s) != 0:
-        prevS = scale
-        if int(math.log10(scale)) == math.log10(scale):
-            scale *= 5
-        else:
-            scale *= 2
-    return prevS
+        Returns:
+          int: Scale to be used
+        """
+        scale = 1
+        prev_s = 1
+        while b//(scale*s) != 0:
+            prev_s = scale
+            if int(math.log10(scale)) == math.log10(scale):
+                scale *= 5
+            else:
+                scale *= 2
+        return prev_s
