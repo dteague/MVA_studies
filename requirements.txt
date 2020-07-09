@@ -4,4 +4,4 @@ matplotlib
 pandas
 sklearn
 uproot
-
+sphinx
