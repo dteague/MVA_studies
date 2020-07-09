@@ -4,18 +4,37 @@ orbs:
   python: circleci/python@0.2.1
 
 jobs:
-  build-and-test:
-    executor: python/default
+  test:
+    docker:
+      - image: python:3.7
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
       - run:
-          command: ./manage.py test
+          name: Install dependencies
+          command: pip install -r requirements.txt
+      - run:
           name: Test
+          command: pytest
 
+  docs-build:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r requirements.txt
+      - run:
+          name: Build docs
+          command: cd doc/ && make html
+      - persist_to_workspace:
+          root: doc/_build
+          paths: html
+
+  
 workflows:
-  main:
+  build:
     jobs:
-      - build-and-test
+      - test
+      - docs-build
+    
