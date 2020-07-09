@@ -1,0 +1,749 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utilities.MVAPlotter &#8212; MVA_studies  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for Utilities.MVAPlotter</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: MVAPlotter</span>
+<span class="sd">   :synopsis: Takes MvaMaker output and creates graphs</span>
+<span class="sd">.. moduleauthor:: Dylan Teague</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">uproot</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_curve</span><span class="p">,</span> <span class="n">roc_auc_score</span>
+<span class="kn">import</span> <span class="nn">xgboost</span> <span class="k">as</span> <span class="nn">xgb</span>
+<span class="c1"># import shap</span>
+
+
+<div class="viewcode-block" id="MVAPlotter"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter">[docs]</a><span class="k">class</span> <span class="nc">MVAPlotter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrapper for a bunch of plotting and outputing functions</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      groups(list): List of group names</span>
+<span class="sd">      do_show(bool): Bool for if matplotlib should show its graphs</span>
+<span class="sd">      save_dir(string): Directory name to save all plots</span>
+<span class="sd">      lumi(float): Luminosity (in ipb)</span>
+<span class="sd">      color_dict(dict: dict): Dictionary for setting line color for groups</span>
+<span class="sd">      work_set(pandas.DataFrame): DataFrame with event/variable data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workdir</span><span class="p">,</span> <span class="n">groups</span><span class="p">,</span> <span class="n">lumi</span><span class="o">=</span><span class="mi">140000</span><span class="p">,</span> <span class="n">is_train</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">=</span> <span class="n">workdir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lumi</span> <span class="o">=</span> <span class="n">lumi</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#f15854&#39;</span><span class="p">,</span> <span class="s1">&#39;#faa43a&#39;</span><span class="p">,</span> <span class="s1">&#39;#60bd68&#39;</span><span class="p">,</span> <span class="s1">&#39;#5da5da&#39;</span><span class="p">]</span>
+        <span class="c1">#  [&#39;#CC0000&#39;, &#39;#99FF00&#39;, &#39;#FFCC00&#39;, &#39;#3333FF&#39;]</span>
+        <span class="c1">#  [&#39;#462066&#39;, &#39;#FFB85F&#39;, &#39;#FF7A5A&#39;, &#39;#00AAA0&#39;]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">grp</span><span class="p">:</span> <span class="n">col</span> <span class="k">for</span> <span class="n">grp</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">colors</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)]</span>
+
+        <span class="k">if</span> <span class="n">is_train</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/trainTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">workdir</span><span class="p">))</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/testTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">workdir</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/testTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">workdir</span><span class="p">))</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/trainTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">workdir</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="mf">1.</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;finalWeight&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ratio</span> <span class="o">*</span> <span class="n">lumi</span> \
+                             <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;newWeight&quot;</span><span class="p">])</span>
+
+        <span class="c1"># was this multilcass or multiple binaries (maybe outdated)</span>
+        <span class="n">multirun</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">elem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">group</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">multirun</span> <span class="ow">and</span> <span class="n">group</span> <span class="o">!=</span> <span class="s2">&quot;Signal&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;BDT.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+                                     <span class="mi">1</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">group</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;BDT.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">group</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MVAPlotter.set_show"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.set_show">[docs]</a>    <span class="k">def</span> <span class="nf">set_show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">do_show</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Set do_show to a value**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          do_show(bool): If Matplotlib show show plots</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span> <span class="o">=</span> <span class="n">do_show</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.add_variable"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.add_variable">[docs]</a>    <span class="k">def</span> <span class="nf">add_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Add variable to MVAPlotter object**</span>
+
+<span class="sd">        If one needs to make a unique, composite variable, this allows</span>
+<span class="sd">        the user to add it to the DataFrame</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          name(string): Name of variable for the DataFrame</span>
+<span class="sd">          arr(numpy.ndarray): Array of variable values for the DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bad!&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.apply_cut_max_bdt"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.apply_cut_max_bdt">[docs]</a>    <span class="k">def</span> <span class="nf">apply_cut_max_bdt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">is_max</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Cut on which BDT is maximum**</span>
+
+<span class="sd">        Cut on file by only keeping the events where the BDT with the</span>
+<span class="sd">        maximum value matches the sample provided. There is a `is_max`</span>
+<span class="sd">        flag to allow the inverse cut</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sample(string): Sample BDT that must be maximized</span>
+<span class="sd">          is_max(bool, optional): whether to keep only maxBDT or all BUT, defaults to True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bdt</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">group</span> <span class="o">==</span> <span class="s2">&quot;Signal&quot;</span><span class="p">:</span>
+                <span class="n">bdt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;BDT.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">group</span><span class="p">)])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bdt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;BDT.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">group</span><span class="p">)])</span>
+
+        <span class="n">max_bdt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">bdt</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_max</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">max_bdt</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sample</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">max_bdt</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sample</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.apply_cut"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.apply_cut">[docs]</a>    <span class="k">def</span> <span class="nf">apply_cut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cut</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Cut DataFrame using Root Style cut string**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          cut(string): Cut string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cut</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">cut</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="k">elif</span> <span class="n">cut</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;&gt;&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">cut</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&gt;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="k">elif</span> <span class="n">cut</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;==&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">cut</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;==&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">tmp</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Problem!&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_sample"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_sample">[docs]</a>    <span class="k">def</span> <span class="nf">get_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get DataFrame matching the groups**</span>
+
+<span class="sd">        .. note:: groups set to None (the default) means the whole</span>
+<span class="sd">                  DataFrame is returned</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          pandas.DataFrame: DataFrame including only groups specified (None means all</span>
+<span class="sd">          groups)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Not list, just single instance</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">groups</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span>
+
+        <span class="c1"># if is a list</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+            <span class="n">tmp_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">group</span><span class="p">)]</span>
+            <span class="n">final_set</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">final_set</span><span class="p">,</span> <span class="n">tmp_set</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">final_set</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_variable"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_variable">[docs]</a>    <span class="k">def</span> <span class="nf">get_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get numpy array of variable**</span>
+
+<span class="sd">        .. note:: This function uses `get_sample` so groups=None means all groups included</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var(string): Variable returned</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          numpy.ndarray: Array of the variable (under the group constraint)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">groups</span><span class="p">)[</span><span class="n">var</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_hist"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_hist">[docs]</a>    <span class="k">def</span> <span class="nf">get_hist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get Histogram of variable**</span>
+
+<span class="sd">        Get numpy histogram of a variable</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var(string): Variable to put in the histogram</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None (means all)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">final_set</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                            <span class="n">weights</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_hist_err2"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_hist_err2">[docs]</a>    <span class="k">def</span> <span class="nf">get_hist_err2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get Error squared histogram for variable**</span>
+
+<span class="sd">        Get numpy histogram of variable squared (poisson err if sqrt)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var(string): Variable to put in the histogram</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None (means all)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">final_set</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                            <span class="n">weights</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">]</span><span class="o">*</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_hist_2d"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_hist_2d">[docs]</a>    <span class="k">def</span> <span class="nf">get_hist_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get numpy 2D histogram for 2 variables**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var1(string): Variable 1 for the x-axis</span>
+<span class="sd">          var2(string): Variable 2 for the y-axis</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None (means all)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram2d</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="n">var1</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="n">var2</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                              <span class="n">weights</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_hist_err2_2d"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_hist_err2_2d">[docs]</a>    <span class="k">def</span> <span class="nf">get_hist_err2_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get numpy 2d histogram for 2 variables squared**</span>
+
+<span class="sd">        Poisson error can be found by sqrting this histogram</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var1(string): Variable 1 for the x-axis</span>
+<span class="sd">          var2(string): Variable 2 for the y-axis</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          groups(list, optional): list of groups to include, defaults to None (means all)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          tuple - ndarray of histogram, ndarray of bins: Numpy histogram of the variable</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram2d</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="n">var1</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="n">var2</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+                              <span class="n">weights</span><span class="o">=</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">]</span><span class="o">*</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.plot_func"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.plot_func">[docs]</a>    <span class="k">def</span> <span class="nf">plot_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">extra_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Plot arbitrary variable**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Primary group to be plotted</span>
+<span class="sd">          bkg(string): Other groups to be plotted against sig</span>
+<span class="sd">          var(string): Variable graphed</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          extra_name(string, optional): name to append to filename, defaults to &quot;&quot;</span>
+<span class="sd">          scale(bool, optional): whether to scale sig up to bkg, defaults to True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sig_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="n">bkg_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">bkg</span><span class="p">)</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_scale</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">sig_hist</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">bkg_hist</span><span class="p">))</span> <span class="k">if</span> <span class="n">scale</span> <span class="k">else</span> <span class="mf">1.</span>
+        <span class="n">bkg_name</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bkg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">bkg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sig_name</span> <span class="o">=</span> <span class="n">sig</span> <span class="k">if</span> <span class="n">scale</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> x </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">extra_name</span><span class="p">:</span>
+            <span class="n">extra_name</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra_name</span><span class="p">)</span>
+
+        <span class="c1"># Make plot</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">sig_hist</span><span class="o">*</span><span class="n">scale</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">sig_name</span><span class="p">,</span>
+                <span class="n">histtype</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span><span class="p">[</span><span class="n">sig</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">bkg_hist</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">bkg_name</span><span class="p">,</span>
+                <span class="n">histtype</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span><span class="p">[</span><span class="n">bkg_name</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Events/bin&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Lumi = </span><span class="si">{}</span><span class="s2"> ifb&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lumi</span><span class="o">/</span><span class="mf">1000.</span><span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/</span><span class="si">%s%s</span><span class="s2">.png&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">extra_name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.plot_func_2d"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.plot_func_2d">[docs]</a>    <span class="k">def</span> <span class="nf">plot_func_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">,</span> <span class="n">bins1</span><span class="p">,</span> <span class="n">bins2</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                     <span class="n">lines</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**plot 2 arbitrary variable**</span>
+
+<span class="sd">        .. note:: This can&#39;t plot 2 groups at once!</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          samples: type samples:</span>
+<span class="sd">          var1(string): Variable 1 for the x-axis</span>
+<span class="sd">          var2(string): Variable 2 for the y-axis</span>
+<span class="sd">          bins1(numpy.ndarray): numpy array of bins for the x-axis</span>
+<span class="sd">          bins2(numpy.ndarray): numpy array of bins for the y-axis</span>
+<span class="sd">          name(string): name used for the plot</span>
+<span class="sd">          lines(list): Coordinate for point where lines will be draw, defaults to None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">hist2d</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">grp</span><span class="p">[</span><span class="n">var1</span><span class="p">],</span> <span class="n">grp</span><span class="p">[</span><span class="n">var2</span><span class="p">],</span> <span class="p">[</span><span class="n">bins1</span><span class="p">,</span> <span class="n">bins2</span><span class="p">],</span>
+                           <span class="n">weights</span><span class="o">=</span><span class="n">grp</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">jet</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">lines</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[</span><span class="n">bins2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">bins2</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">bins1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">bins1</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span>  <span class="p">[</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">hist2d</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">var1</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">var2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Lumi = </span><span class="si">{}</span><span class="s2"> ifb&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lumi</span><span class="o">/</span><span class="mf">1000.</span><span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/2D_</span><span class="si">%s</span><span class="s2">.png&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.get_fom"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.get_fom">[docs]</a>    <span class="k">def</span> <span class="nf">get_fom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sb_denom</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Return FoM histogram**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Primary group to be plotted</span>
+<span class="sd">          bkg(string): Other groups to be plotted against sig</span>
+<span class="sd">          var(string): Variable used to calculate Figure of Merit</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          sb_denom(bool, optional): If False, uses S/sqrt(B) instead of S/sqrt(S+B), defaults to True</span>
+<span class="sd">          reverse(bool, optional): if True, calculates FoM using LESS than not greater than, defaults to False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          rtype:</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">drt</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">reverse</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">sig_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sig</span><span class="p">)[::</span><span class="n">drt</span><span class="p">]</span>
+        <span class="n">bkg_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">bkg</span><span class="p">)[::</span><span class="n">drt</span><span class="p">]</span>
+        <span class="n">n_sig</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sig_hist</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">))]</span>
+        <span class="k">if</span> <span class="n">sb_denom</span><span class="p">:</span>
+            <span class="n">n_tot</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">bkg_hist</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sig_hist</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span>
+                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">))]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_tot</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">bkg_hist</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sig_hist</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span>
+                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">s</span><span class="o">/</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">n_sig</span><span class="p">,</span> <span class="n">n_tot</span><span class="p">)][::</span><span class="n">drt</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.plot_fom"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.plot_fom">[docs]</a>    <span class="k">def</span> <span class="nf">plot_fom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">extra_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sb_denom</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Plots Figure of Merits for variable scan**</span>
+
+<span class="sd">        Plot figure of merit by creating a &quot;signal region&quot; by only</span>
+<span class="sd">        keeping events with a value of var greater than what value is</span>
+<span class="sd">        being scanned. One can use a cut that keeps events LESS than</span>
+<span class="sd">        the cut for var using the reverse flag.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Primary group to be plotted</span>
+<span class="sd">          bkg(string): Other groups to be plotted against sig</span>
+<span class="sd">          var(string): Variable graphed</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          extra_name(string, optional): name to append to filename, defaults to &quot;&quot;</span>
+<span class="sd">          sb_denom(bool, optional): If False, uses S/sqrt(B) instead of S/sqrt(S+B), defaults to True</span>
+<span class="sd">          reverse(bool, optional): if True, calculates FoM using LESS than not greater than, defaults to False</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          list: List of (FOM, bin) for the max FOM</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">extra_name</span><span class="p">:</span>
+            <span class="n">extra_name</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra_name</span><span class="p">)</span>
+            <span class="n">fom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_fom</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sb_denom</span><span class="p">,</span> <span class="n">reverse</span><span class="p">)</span>
+            <span class="n">fom_maxbin</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[</span><span class="n">fom</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">fom</span><span class="p">))]</span>
+
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+        <span class="n">plot</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">bins</span><span class="p">,</span> <span class="n">fom</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;$S/\sqrt</span><span class="si">{B}</span><span class="s2">=</span><span class="si">%.3f</span><span class="s2">$</span><span class="se">\n</span><span class="s2"> cut=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">fom</span><span class="p">),</span> <span class="n">fom_maxbin</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bins</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">),</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">fom</span><span class="p">)]</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span>
+                <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">plot</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_color</span><span class="p">())</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;BDT value&quot;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;A.U.&quot;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="n">ax2</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+        <span class="n">sig_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="n">bkg_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">bkg</span><span class="p">)</span>
+        <span class="n">bkg_name</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bkg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">bkg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">sig_hist</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
+                 <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span><span class="p">[</span><span class="n">sig</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="n">sig</span><span class="p">,</span>
+                 <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">bkg_hist</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
+                 <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">color_dict</span><span class="p">[</span><span class="n">bkg_name</span><span class="p">],</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">label</span><span class="o">=</span><span class="n">bkg_name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reversed Cumulative Direction&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">ax2</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/StoB_</span><span class="si">%s</span><span class="s2">.png&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">extra_name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">fom</span><span class="p">,</span> <span class="n">fom_maxbin</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.plot_fom_2d"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.plot_fom_2d">[docs]</a>    <span class="k">def</span> <span class="nf">plot_fom_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">,</span> <span class="n">bins1</span><span class="p">,</span> <span class="n">bins2</span><span class="p">,</span> <span class="n">extra_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Plot Figure of Merit using a 2D scan**</span>
+
+<span class="sd">        Figure of merit is calculated by cutting on var1 and var2,</span>
+<span class="sd">        using the events with values greater than the cuts to define</span>
+<span class="sd">        the &quot;signal region&quot;.</span>
+<span class="sd">        Returns info on max bin and max StoB</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Group to plot in the graph</span>
+<span class="sd">          var1(string): Variable 1 for the x-axis</span>
+<span class="sd">          var2(string): Variable 2 for the y-axis</span>
+<span class="sd">          bins1(numpy.ndarray): numpy array of bins for the x-axis</span>
+<span class="sd">          bins2(numpy.ndarray): numpy array of bins for the y-axis</span>
+<span class="sd">          extra_name(string, optional): name to append to filename, defaults to &quot;&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          list: List of (FOM, x value, y value) for the max FOM</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">extra_name</span><span class="p">:</span>
+            <span class="n">extra_name</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra_name</span><span class="p">)</span>
+            <span class="n">grp_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+
+        <span class="n">zvals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xbins</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">bins1</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bins2</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ybins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bins1</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bins2</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">max_fom</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">valy</span> <span class="ow">in</span> <span class="n">bins2</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">df_cut2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">var2</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">valy</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">valx</span> <span class="ow">in</span> <span class="n">bins1</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">final</span> <span class="o">=</span> <span class="n">df_cut2</span><span class="p">[</span><span class="n">df_cut2</span><span class="p">[</span><span class="n">var1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">valx</span><span class="p">]</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">final</span><span class="p">[</span><span class="n">final</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">grp_id</span><span class="p">][</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">final</span><span class="p">[</span><span class="n">final</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">grp_id</span><span class="p">][</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">])</span>
+                <span class="n">fom</span> <span class="o">=</span> <span class="n">s</span><span class="o">/</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s</span><span class="o">+</span><span class="n">b</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span><span class="o">+</span><span class="n">s</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">fom</span> <span class="o">&gt;</span> <span class="n">max_fom</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">max_fom</span> <span class="o">=</span> <span class="p">(</span><span class="n">fom</span><span class="p">,</span> <span class="n">valx</span><span class="p">,</span> <span class="n">valy</span><span class="p">)</span>
+                    <span class="n">zvals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fom</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">xbins</span><span class="p">,</span> <span class="n">ybins</span><span class="p">,</span> <span class="p">[</span><span class="n">bins1</span><span class="p">,</span> <span class="n">bins2</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">zvals</span><span class="p">,</span>
+                   <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">jet</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">max_fom</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">max_fom</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">max_fom</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">max_fom</span><span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="s1">&#39;r-&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">var1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">var2</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}{}</span><span class="s2">.png&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="s2">&quot;stob2D&quot;</span><span class="p">,</span> <span class="n">extra_name</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">max_fom</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.approx_likelihood"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.approx_likelihood">[docs]</a>    <span class="k">def</span> <span class="nf">approx_likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Get Basic max Likelihood significance**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Primary group to be plotted</span>
+<span class="sd">          bkg(string): Other groups to be plotted against sig</span>
+<span class="sd">          var(string): Variable used to calculate</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          float: The Maximum Log Likelihood approximation (without errors)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sig_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="n">bkg_hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">bkg</span><span class="p">)</span>
+        <span class="n">term1</span><span class="p">,</span> <span class="n">term2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">sig_val</span><span class="p">,</span> <span class="n">bkg_val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sig_hist</span><span class="p">,</span> <span class="n">bkg_hist</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">bkg_val</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">sig_val</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">term1</span> <span class="o">+=</span> <span class="p">(</span><span class="n">sig_val</span><span class="o">+</span><span class="n">bkg_val</span><span class="p">)</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">sig_val</span><span class="o">/</span><span class="n">bkg_val</span><span class="p">)</span>
+            <span class="n">term2</span> <span class="o">+=</span> <span class="n">sig_val</span>
+        <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">term1</span> <span class="o">-</span> <span class="n">term2</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.make_roc"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.make_roc">[docs]</a>    <span class="k">def</span> <span class="nf">make_roc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">bkg</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">extra_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Make and Save ROC curve for variable</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          sig(string): Primary group to be plotted</span>
+<span class="sd">          bkg(string): Other groups to be plotted against sig</span>
+<span class="sd">          var(string): Variable used to plot ROC curve</span>
+<span class="sd">          extra_name(string, optional): name to append to filename, defaults to &quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO(dylan) Need to generalize past just BDT variables</span>
+        <span class="n">final_set</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">sig</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">(</span><span class="n">bkg</span><span class="p">)))</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;BDT.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="p">)]</span><span class="o">.</span><span class="n">array</span>
+        <span class="k">if</span> <span class="n">extra_name</span><span class="p">:</span>
+            <span class="n">extra_name</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra_name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">var</span> <span class="o">!=</span> <span class="n">sig</span><span class="p">:</span>
+            <span class="n">truth</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span>
+                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">array</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">truth</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;classID&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">array</span><span class="p">]</span>
+            <span class="n">fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">truth</span><span class="p">,</span> <span class="n">pred</span><span class="p">)</span>
+            <span class="n">auc</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">truth</span><span class="p">,</span> <span class="n">pred</span><span class="p">)</span>
+
+        <span class="c1"># plot</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AUC = </span><span class="si">{:.3f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">auc</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;False Positive Rate&quot;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;True Positive Rate&quot;</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/roc_curve.BDT.</span><span class="si">{}{}</span><span class="s2">.png&quot;</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">extra_name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.write_out"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.write_out">[docs]</a>    <span class="k">def</span> <span class="nf">write_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">input_tree</span><span class="p">,</span> <span class="n">chan</span><span class="o">=</span><span class="s2">&quot;SS&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Write DataFrame out to ROOT file compatible with VVPlotter**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          filename(string): Name the ROOT file is saved as</span>
+<span class="sd">          input_tree(string): input_tree filename used for getting sumweight graphs</span>
+<span class="sd">          chan(string, optional): Folder plots are put into, defaults to &quot;SS&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rm_groups</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">,</span> <span class="s2">&quot;GroupName&quot;</span><span class="p">,</span> <span class="s2">&quot;classID&quot;</span><span class="p">,</span> <span class="s2">&quot;finalWeight&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;newWeight&quot;</span><span class="p">]</span>
+        <span class="kn">import</span> <span class="nn">ROOT</span>
+        <span class="n">sumweight_file</span> <span class="o">=</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">TFile</span><span class="p">(</span><span class="n">input_tree</span><span class="p">)</span>
+        <span class="n">sumweights</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sumweight_file</span><span class="o">.</span><span class="n">GetListOfKeys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s2">&quot;sumweight&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">key</span><span class="o">.</span><span class="n">GetName</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">GetName</span><span class="p">()[</span><span class="mi">10</span><span class="p">:]</span>
+            <span class="n">sumweights</span><span class="p">[</span><span class="n">sample</span><span class="p">]</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">ReadObj</span><span class="p">()</span><span class="o">.</span><span class="n">GetBinContent</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">sumweight_file</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+        <span class="n">group_names</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;GroupName&quot;</span><span class="p">])</span>
+        <span class="n">var_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">var_name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">rm_groups</span><span class="p">)):</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="n">var_name</span><span class="p">]</span>
+            <span class="n">var_info</span><span class="p">[</span><span class="n">var_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+                                  <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))]</span>
+            <span class="n">outfile</span> <span class="o">=</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">TFile</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s2">&quot;RECREATE&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">group_names</span><span class="p">:</span>
+            <span class="n">work_dir</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+            <span class="n">work_dir</span><span class="o">.</span><span class="n">cd</span><span class="p">()</span>
+            <span class="n">work_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;GroupName&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">group</span><span class="p">]</span>
+            <span class="n">work_weight</span> <span class="o">=</span> <span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;weight&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">var_name</span><span class="p">,</span> <span class="n">var_details</span> <span class="ow">in</span> <span class="n">var_info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">bot</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">var_details</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">n_digits</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">var_details</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                <span class="n">top</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">var_details</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mf">0.5</span><span class="o">*</span><span class="nb">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_digits</span><span class="p">))</span>
+
+                <span class="k">if</span> <span class="n">var_details</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+                    <span class="n">hist</span> <span class="o">=</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">TH1F</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">chan</span><span class="p">),</span>
+                                     <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">chan</span><span class="p">),</span>
+                                     <span class="nb">int</span><span class="p">(</span><span class="n">top</span><span class="o">-</span><span class="n">bot</span><span class="p">),</span> <span class="n">bot</span><span class="p">,</span> <span class="n">top</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">hist</span> <span class="o">=</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">TH1F</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">chan</span><span class="p">),</span>
+                                     <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">chan</span><span class="p">),</span>
+                                     <span class="mi">1024</span><span class="p">,</span> <span class="n">bot</span><span class="p">,</span> <span class="n">top</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">vals</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">work_set</span><span class="p">[</span><span class="n">var_name</span><span class="p">],</span> <span class="n">work_weight</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="s2">&quot;Pt&quot;</span> <span class="ow">in</span> <span class="n">var_name</span> <span class="ow">and</span> <span class="n">vals</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">hist</span><span class="o">.</span><span class="n">Fill</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+                    <span class="n">hist</span><span class="o">.</span><span class="n">Write</span><span class="p">()</span>
+                    <span class="n">sumweight_hist</span> <span class="o">=</span> <span class="n">ROOT</span><span class="o">.</span><span class="n">TH1D</span><span class="p">(</span><span class="s2">&quot;sumweights&quot;</span><span class="p">,</span> <span class="s2">&quot;sumweights&quot;</span><span class="p">,</span>
+                                               <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">sumweight_hist</span><span class="o">.</span><span class="n">SetBinContent</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">sumweights</span><span class="p">[</span><span class="n">group</span><span class="p">])</span>
+                    <span class="n">sumweight_hist</span><span class="o">.</span><span class="n">Scale</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_ratio</span><span class="p">)</span>
+                    <span class="n">sumweight_hist</span><span class="o">.</span><span class="n">Write</span><span class="p">()</span>
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">cd</span><span class="p">()</span>
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">Write</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.print_info"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.print_info">[docs]</a>    <span class="k">def</span> <span class="nf">print_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">subgroups</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Print out basic statistics information for a variable**</span>
+
+<span class="sd">        The information for each sample in a group includes the mean,</span>
+<span class="sd">        standard deviation, kurtosis, total weighted sum, total raw</span>
+<span class="sd">        events.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var(string): Variable used to print statistics</span>
+<span class="sd">          subgroups(list): list of all the samples for the information to be printed about</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">kurtosis</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">grp_name</span> <span class="ow">in</span> <span class="n">subgroups</span><span class="p">:</span>
+            <span class="n">final_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">work_set</span><span class="p">[</span><span class="s2">&quot;GroupName&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">grp_name</span><span class="p">]</span>
+            <span class="n">variable</span> <span class="o">=</span> <span class="n">final_set</span><span class="p">[</span><span class="n">var</span><span class="p">]</span>
+            <span class="n">info</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">variable</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">variable</span><span class="p">),</span>
+                         <span class="n">kurtosis</span><span class="p">(</span><span class="n">variable</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">final_set</span><span class="p">[</span><span class="s2">&quot;finalWeight&quot;</span><span class="p">]),</span>
+                         <span class="nb">len</span><span class="p">(</span><span class="n">final_set</span><span class="p">),</span> <span class="n">grp_name</span><span class="p">])</span>
+
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;|</span><span class="si">{:10}</span><span class="s2"> | </span><span class="si">{:.2f}</span><span class="s2">| </span><span class="si">{}</span><span class="s2"> | </span><span class="si">{:.2f}</span><span class="s2">+-</span><span class="si">{:.2f}</span><span class="s2"> | </span><span class="si">{:0.2f}</span><span class="s2"> |&quot;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MVAPlotter.plot_all_shapes"><a class="viewcode-back" href="../../code.html#Utilities.MVAPlotter.MVAPlotter.plot_all_shapes">[docs]</a>    <span class="k">def</span> <span class="nf">plot_all_shapes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">extra_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Plot all groups (normalized to 1) to compare shapes**</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          var(string): Variable graphed</span>
+<span class="sd">          bins(numpy.ndarray): numpy array of bins</span>
+<span class="sd">          extra_name(name: name to append to filename, defaults to &quot;&quot;, optional): name to append to filename, defaults to &quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">extra_name</span><span class="p">:</span>
+            <span class="n">extra_name</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">extra_name</span><span class="p">)</span>
+
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_hist</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">group</span><span class="p">),</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                    <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;A.U.&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Lumi = </span><span class="si">{}</span><span class="s2"> ifb&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lumi</span><span class="p">))</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}{}</span><span class="s2">.png&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">extra_name</span><span class="p">))</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_find_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;**Find scale factor for signal to match rough size of background**</span>
+
+<span class="sd">        Increases the scale for signal in a roughly logorithmic</span>
+<span class="sd">        pattern (1, 5, 10 , 50, 100, ...) to find where the signal and</span>
+<span class="sd">        background are roughly the same. This is used to make sure the</span>
+<span class="sd">        plots are scaled well enough to see signal and background</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          s(float): Number of signal events</span>
+<span class="sd">          b(float): Number of background events</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          int: Scale to be used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">prev_s</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="n">b</span><span class="o">//</span><span class="p">(</span><span class="n">scale</span><span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">prev_s</span> <span class="o">=</span> <span class="n">scale</span>
+            <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">scale</span><span class="p">))</span> <span class="o">==</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">scale</span><span class="p">):</span>
+                <span class="n">scale</span> <span class="o">*=</span> <span class="mi">5</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">scale</span> <span class="o">*=</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">prev_s</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">MVA_studies</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../running.html">Running the code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code.html">BDT Maker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code.html#mva-outputer">MVA Outputer</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Dylan Teague.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

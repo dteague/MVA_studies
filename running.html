@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Running the code &#8212; MVA_studies  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="BDT Maker" href="code.html" />
+    <link rel="prev" title="Installation Guide" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="running-the-code">
+<h1>Running the code<a class="headerlink" href="#running-the-code" title="Permalink to this headline">¶</a></h1>
+<p>The code is split into two logical components–doing the training, plotting, and outputing. The following sections talk about them. For reference, the training is taken care of by the <code class="docutils literal notranslate"><span class="pre">Utilities/MvMaker.py</span></code> file and the plotting and outputting is done by the <code class="docutils literal notranslate"><span class="pre">Utilties/MVAPlotter.py</span></code></p>
+<div class="section" id="training">
+<h2>Training<a class="headerlink" href="#training" title="Permalink to this headline">¶</a></h2>
+<p>The training is mandatory for a new output directory (the directory needs to have files to make plots from), but after the first training, the <code class="docutils literal notranslate"><span class="pre">-t</span></code> flag can be ignored. The main imports to the training are the variables in between the boxes labeled <code class="docutils literal notranslate"><span class="pre">User</span> <span class="pre">Variables</span></code> in <code class="docutils literal notranslate"><span class="pre">runMVA.py</span></code>.</p>
+<ul class="simple">
+<li><p><strong>usevar</strong> – The variables used in the actual training</p></li>
+<li><p><strong>specVar</strong> – The variables NOT used in the actual training, but needed (say for cuts)</p></li>
+<li><p><strong>CUT</strong> – ROOT style cut string applied as a preselection before training</p></li>
+<li><p><strong>INPUT_TREE</strong> – input root for training. Unless you know how to produce this, don’t change</p></li>
+<li><p><strong>groups</strong> – List of the different training groups with the samples in those training groups</p></li>
+</ul>
+<p>Besides those variables, most of the rest is automated in the training block of the code. The only other change is training in multiclass or binary. The two functions are <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">train_single(sample)</span></code>. I would suggest just using the <code class="docutils literal notranslate"><span class="pre">train()</span></code> function.</p>
+<p>Any other expert changes can be made in the <code class="docutils literal notranslate"><span class="pre">./Utilities/MvaMaker.py</span></code> file.</p>
+</div>
+<div class="section" id="plotting">
+<h2>Plotting<a class="headerlink" href="#plotting" title="Permalink to this headline">¶</a></h2>
+<p>For plotting, there is plenty of roam for creating one’s own graphs, the functions listed here are merely a useful set of functions for making plots. The basic setup for all the functions is as so:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">output</span><span class="o">.&lt;</span><span class="n">func</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&lt;</span><span class="n">primary</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">other</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">var</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">binning</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">extra</span> <span class="n">name</span><span class="o">&gt;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>primary group</strong> – Single group to plot first</p></li>
+<li><p><strong>other groups</strong> – Single or collection of groups to plot against</p></li>
+<li><p><strong>var</strong> – Variable to plot (BDT variables use the convention <code class="docutils literal notranslate"><span class="pre">BDT.&lt;Group&gt;</span></code>)</p></li>
+<li><p><strong>binning</strong> – binning in the form of a numpy array. Use <code class="docutils literal notranslate"><span class="pre">np.linspace</span></code> for this</p></li>
+<li><p><strong>extra name</strong> – Option to add a tag at the end of the file name to distinguish it, especially if before and after applying some cut</p></li>
+</ul>
+<p>There is a “show” option that can be turned on in the command line, this makes the matplotlib show the plots before saving them. By default it is turned off.</p>
+<p>All of the plots are saved into the output directory. Some of the functions and how they are used are in <code class="docutils literal notranslate"><span class="pre">runMVA.py</span></code>, but for more functions/information, please look at <code class="docutils literal notranslate"><span class="pre">Utilities/MVAPlotter.py</span></code> or the information here.</p>
+</div>
+<div class="section" id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h2>
+<p>While the code allows for plotting, to plug the BDTs back into the main code base for further analysis, such as running combine on it, it needs to be converted to ROOT format. <code class="docutils literal notranslate"><span class="pre">write_out()</span></code> is what is used for writing the pandas information as ROOT histograms. By default, all the histograms are saved with 1024 (unless it has integer argument) to allow for maximum flexibility with rebinning. The format it is written out is for the <code class="docutils literal notranslate"><span class="pre">VVAnalysis</span></code> code base, so for more info on that, go to that code base.</p>
+<p>If you want to write the code out AFTER some selection, you can apply a cut to the DataFrame stored in the MVAPlotter object using the <code class="docutils literal notranslate"><span class="pre">apply_cut(cut)</span></code> function. Also, there is the <code class="docutils literal notranslate"><span class="pre">apply_cut_max_bdt(sample)</span></code> function which only keeps events where the BDT value for the sample given is the maximum. After applying a cut to the <code class="docutils literal notranslate"><span class="pre">MVAPlotter</span></code> object, the plots will also change, allowing for plotting before and after cut.</p>
+<p>Further, if you want to create you’re own composite variable, you can grab the DataFrame using <code class="docutils literal notranslate"><span class="pre">get_sample()</span></code>, create a variable, and add it using <code class="docutils literal notranslate"><span class="pre">add_variable(name,</span> <span class="pre">arr)</span></code>. When you write out to a ROOT file, this variable will included automatically. It will not be included in the pandas DataFrame created by the <code class="docutils literal notranslate"><span class="pre">MvaMaker</span></code> object, to save it, one needs to do this manually (though it is not suggested!)</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">MVA_studies</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Installation Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Running the code</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#training">Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plotting">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output">Output</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">BDT Maker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html#mva-outputer">MVA Outputer</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Installation Guide</a></li>
+      <li>Next: <a href="code.html" title="next chapter">BDT Maker</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Dylan Teague.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/running.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
