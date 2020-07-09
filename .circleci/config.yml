@@ -49,7 +49,7 @@ jobs:
             - "b4:c1:cf:42:70:34:21:f3:70:2d:dc:5a:05:5b:53:e0"
       - run:
           name: Deploy docs to gh-pages branch
-          command: gh-pages --dotfiles --message "[skip ci] Updates" --dist docs/build/html
+          command: gh-pages --dotfiles --message "[ci skip] Updates" --dist docs/build/html
   
 workflows:
   build:

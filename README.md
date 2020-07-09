@@ -4,10 +4,6 @@ git clone ssh://git@github.com/dteague/MVA_studies.git
 cd MVA_studies
 ```
 
-For further instructions, download this repo and open up the document pages, or
+For further instructions, go to the documentation page, found at https://dteague.github.io/MVA_studies/
 
-``` sh
-firefox doc/build/html/index.html
-```
-or whichever browser you prefer
 
