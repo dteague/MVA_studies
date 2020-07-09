@@ -14,7 +14,7 @@ jobs:
           command: pip install -r requirements.txt
       - run:
           name: Test
-          command: pytest
+          command: echo Test
 
   docs-build:
     docker:
@@ -28,13 +28,35 @@ jobs:
           name: Build docs
           command: cd doc/ && make html
       - persist_to_workspace:
-          root: doc/_build
+          root: doc/build
           paths: html
 
+  docs-deploy:
+    docker:
+      - image: node:8.10.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: docs/build
+      - run:
+          name: Install and configure dependencies
+          command: |
+            npm install -g --silent gh-pages@2.0.1
+            git config user.email "dteague@wisc.edu"
+            git config user.name "dteague"
+      - run:
+          name: Deploy docs to gh-pages branch
+          command: gh-pages --dist docs/build/html
   
 workflows:
   build:
     jobs:
       - test
       - docs-build
-    
+      - docs-deploy:
+          requires:
+            - test
+            - docs-build
+          filters:
+            branches:
+              only: master
