@@ -121,9 +121,9 @@ class XGBoostMaker:
         x_test = self.test_set.drop(self._drop_vars, axis=1)
         y_test = [1 if cID==0 else 0 for cID in self.test_set["classID"]]
 
-        groups_total = [y_train.count(i) for i in np.unique(y_train)]
-        for i, group_tot in enumerate(groups_total):
-            w_train[workTrain["classID"] == i] *= min(groups_total)/group_tot
+        group_tot = y_train.value_counts()
+        for i in np.unique(y_train):
+            w_train[self.train_set["classID"] == i] *= min(group_tot)/group_tot[i]
 
         self.param['objective'] = "binary:logistic"  # 'multi:softprob'
         self.param['eval_metric'] = 'logloss'  # "mlogloss"
@@ -161,9 +161,9 @@ class XGBoostMaker:
         x_test = self.test_set.drop(self._drop_vars, axis=1)
         y_test = self.test_set["classID"]
 
-        groups_total = [y_test.count(i) for i in np.unique(y_train)]
-        for i, group_tot in enumerate(groups_total):
-            w_train[self.train_set["classID"] == i] *= min(self.groups_total)/group_tot
+        group_tot = y_train.value_counts()
+        for i in np.unique(y_train):
+            w_train[self.train_set["classID"] == i] *= min(group_tot)/group_tot[i]
 
         self.param['objective'] = 'multi:softprob'
         self.param['eval_metric'] = "mlogloss"

@@ -27,7 +27,7 @@ usevar = ["NJets", "NBJets", "HT", "MET", "l1Pt", "l2Pt", "lepMass", "centrality
 specVar = ["newWeight", "DilepCharge", "weight"]
 
 # Root style cut string used for preselection
-CUT = '' #'HT>150&&DilepCharge>0&&MET>25'
+CUT = 'HT>150&&DilepCharge>0&&MET>25'
 
 # Input Rootfile
 INPUT_TREE = "inputTrees_new.root"
@@ -87,7 +87,7 @@ output = MVAPlotter(outname, GROUP_NAMES, lumi)
 output.set_show(args.show)
 gSet = output.get_sample()
 
-output.write_out("preSelection_BDT.2020.06.03_single.root", INPUT_TREE)
+output.write_out("preSelection_BDT.2020.07.14.root", INPUT_TREE)
 output.plot_fom("Signal", ["Background"], "BDT.Signal", stobBins, "")
 output.make_roc("Signal", ["FourTop", "Background"], "Signal", "SignalvsAll")
 output.print_info("BDT.Signal", groupOrdered)
@@ -95,8 +95,10 @@ output.plot_all_shapes("NJets", np.linspace(0, 15, 16), "allGroups")
 output.plot_all_shapes("MET", np.linspace(0, 500, 50), "allGroups")
 output.plot_all_shapes("HT", np.linspace(0, 1500, 50), "allGroups")
 
-print("FourTop: ", output.approx_likelihood("Signal", ["Background", "FourTop"], "BDT.FourTop", stobBins))
-print("Background: ", output.approx_likelihood("Signal", ["Background", "FourTop"], "BDT.Background", stobBins))
+print("FourTop: ", output.approx_likelihood("Signal", ["Background", "FourTop"],
+                                            "BDT.FourTop", stobBins))
+print("Background: ", output.approx_likelihood("Signal", ["Background", "FourTop"],
+                                               "BDT.Background", stobBins))
 
 
 maxSBVal = output.plot_fom_2d("Signal", "BDT.Background", "BDT.FourTop", stob2d, stob2d)

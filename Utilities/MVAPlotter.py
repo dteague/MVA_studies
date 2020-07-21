@@ -364,8 +364,8 @@ class MVAPlotter(object):
         """
         if extra_name:
             extra_name = "_{}".format(extra_name)
-            fom = self.get_fom(sig, bkg, var, bins, sb_denom, reverse)
-            fom_maxbin = bins[fom.index(max(fom))]
+        fom = self.get_fom(sig, bkg, var, bins, sb_denom, reverse)
+        fom_maxbin = bins[fom.index(max(fom))]
 
         fig, ax = plt.subplots()
 
@@ -388,10 +388,10 @@ class MVAPlotter(object):
 
         if reverse:
             ax.set_title("Reversed Cumulative Direction")
-            ax.legend()
-            ax2.legend()
-            fig.tight_layout()
-            plt.savefig("%s/StoB_%s.png" % (self.save_dir, extra_name))
+        ax.legend()
+        ax2.legend()
+        fig.tight_layout()
+        plt.savefig("%s/StoB_%s.png" % (self.save_dir, extra_name))
         if self.do_show:
             plt.show()
             plt.close()
@@ -419,7 +419,7 @@ class MVAPlotter(object):
         """
         if extra_name:
             extra_name = "_{}".format(extra_name)
-            grp_id = self.groups.index(sig)
+        grp_id = self.groups.index(sig)
 
         zvals = []
         xbins = list(bins1[:-1])*(len(bins2)-1)
@@ -434,7 +434,7 @@ class MVAPlotter(object):
                 fom = s/math.sqrt(s+b) if b+s > 0 else 0
                 if fom > max_fom[0]:
                     max_fom = (fom, valx, valy)
-                    zvals.append(fom)
+                zvals.append(fom)
 
         plt.hist2d(xbins, ybins, [bins1, bins2], weights=zvals,
                    cmap=plt.cm.jet)
@@ -502,8 +502,8 @@ class MVAPlotter(object):
         ax.set_xlabel("False Positive Rate", horizontalalignment='right', x=1.0)
         ax.set_ylabel("True Positive Rate", horizontalalignment='right', y=1.0)
         fig.tight_layout()
-        plt.savefig("{}/roc_curve.BDT.{}{}.png"
-                    .format(self.save_dir, var, extra_name))
+        plt.savefig("{}/roc_curve.BDT.{}{}.png" .format(self.save_dir, var,
+                                                        extra_name))
         if self.do_show:
             plt.show()
             plt.close()
@@ -518,6 +518,15 @@ class MVAPlotter(object):
         """
         rm_groups = ["Unnamed: 0", "GroupName", "classID", "finalWeight",
                      "newWeight"]
+        # with uproot.open(input_tree) as f:
+        #     for name, hist in f.items():
+        #         if "sumweight" not in name.decode():
+        #             continue
+        #         sample = key.GetName()[10:]
+        #         sumweights[sample] = key.ReadObj().GetBinContent(1)
+        #         sumweight_file.Close()
+        #         print(name)
+
         import ROOT
         sumweight_file = ROOT.TFile(input_tree)
         sumweights = dict()
@@ -526,7 +535,7 @@ class MVAPlotter(object):
                 continue
             sample = key.GetName()[10:]
             sumweights[sample] = key.ReadObj().GetBinContent(1)
-            sumweight_file.Close()
+        sumweight_file.Close()
 
         group_names = np.unique(self.work_set["GroupName"])
         var_info = dict()
@@ -534,7 +543,7 @@ class MVAPlotter(object):
             var = self.work_set[var_name]
             var_info[var_name] = [min(var), max(var),
                                   np.array_equal(var, var.astype(int))]
-            outfile = ROOT.TFile("{}/{}".format(self.save_dir, filename), "RECREATE")
+        outfile = ROOT.TFile("{}/{}".format(self.save_dir, filename), "RECREATE")
         for group in group_names:
             work_dir = outfile.mkdir(group)
             work_dir.cd()
@@ -558,14 +567,14 @@ class MVAPlotter(object):
                     if "Pt" in var_name and vals < 5:
                         continue
                     hist.Fill(vals, weight)
-                    hist.Write()
-                    sumweight_hist = ROOT.TH1D("sumweights", "sumweights",
-                                               10, 0, 1)
-                    sumweight_hist.SetBinContent(1, sumweights[group])
-                    sumweight_hist.Scale(1/self._ratio)
-                    sumweight_hist.Write()
-                    outfile.cd()
-                    outfile.Write()
+                hist.Write()
+            sumweight_hist = ROOT.TH1D("sumweights", "sumweights",
+                                       10, 0, 1)
+            sumweight_hist.SetBinContent(1, sumweights[group])
+            sumweight_hist.Scale(1/self._ratio)
+            sumweight_hist.Write()
+            outfile.cd()
+        outfile.Write()
 
     def print_info(self, var, subgroups):
         """**Print out basic statistics information for a variable**
@@ -591,7 +600,7 @@ class MVAPlotter(object):
         for arr in info:
             print("|{:10} | {:.2f}| {} | {:.2f}+-{:.2f} | {:0.2f} |"
                   .format(arr[5], arr[3], arr[4], arr[0], arr[1], arr[2]))
-            print("-"*50)
+        print("-"*50)
 
     def plot_all_shapes(self, var, bins, extra_name=""):
         """**Plot all groups (normalized to 1) to compare shapes**
@@ -609,13 +618,13 @@ class MVAPlotter(object):
             ax.hist(x=bins[:-1], weights=self.get_hist(var, bins, group),
                     bins=bins, label=group, histtype="step", linewidth=1.5,
                     density=True)
-            ax.legend()
-            ax.set_xlabel(var)
-            ax.set_ylabel("A.U.")
-            ax.set_title("Lumi = {} ifb".format(self.lumi))
-            fig.tight_layout()
-            plt.savefig("{}/{}{}.png".format(self.save_dir, var, extra_name))
-            plt.close()
+        ax.legend()
+        ax.set_xlabel(var)
+        ax.set_ylabel("A.U.")
+        ax.set_title("Lumi = {} ifb".format(self.lumi))
+        fig.tight_layout()
+        plt.savefig("{}/{}{}.png".format(self.save_dir, var, extra_name))
+        plt.close()
 
     def _find_scale(self, s, b):
         """**Find scale factor for signal to match rough size of background**
