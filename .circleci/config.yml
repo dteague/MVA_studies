@@ -56,7 +56,7 @@ jobs:
       py_version:
         description: Version of python to use
         type: string
-        default: '3.6'
+        default: '3.6' 
       source_root:
         description: Path to the root of source code
         type: string
