@@ -62,16 +62,15 @@ jobs:
         description: Path to the root of source code
         type: string
         default: Utilities
-    executor:
-      name: python_only
-      py_version: << parameters.py_version >>
+    docker:
+      - image: python:<< parameters.py_version >>
     steps:
-      - medasync_misc/attach_repo
-      - check_formatting:
+      - misc/attach_repo
+      - python/check_formatting:
           source_root: << parameters.source_root >>
-      - check_import_order:
+      - python/check_import_order:
           source_root: << parameters.source_root >>
-      - run_prospector
+      - python/run_prospector
 
 
 workflows:
