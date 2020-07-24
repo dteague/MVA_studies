@@ -222,14 +222,9 @@
 <span class="sd">          outname: Directory where files will be written</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="n">uproot</span><span class="o">.</span><span class="n">recreate</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/BDT.root&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_write_root</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s2">&quot;TestTree&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span><span class="p">,</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">pred_test</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_write_root</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s2">&quot;TrainTree&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span><span class="p">,</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">pred_train</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pandas</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/testTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_pandas</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/testTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
                                <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pred_test</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pandas</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/trainTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_pandas</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/trainTree.pkl.gz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
                                <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pred_train</span><span class="p">)</span></div>
 
     <span class="c1"># Private Functions</span>
@@ -266,24 +261,7 @@
         <span class="n">workSet</span> <span class="o">=</span> <span class="n">workSet</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">set_difference</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">prediction</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">workSet</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span>
-            <span class="n">workSet</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">outname</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_write_root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">treeName</span><span class="p">,</span> <span class="n">workSet</span><span class="p">,</span> <span class="n">prediction</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;**Write out as a rootfile**</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">          outfile(string): Name of file to write</span>
-<span class="sd">          treeName(string): Name of tree to put data (for test or train)</span>
-<span class="sd">          workSet(pandas.DataFrame): DataFrame of variables to write out</span>
-<span class="sd">          prediction(pandas.DataFrame): DataFrame of BDT predictions</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">out_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">workSet</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_vars</span><span class="p">}</span>
-        <span class="n">out_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span>
-        <span class="k">del</span> <span class="n">out_dict</span><span class="p">[</span><span class="s2">&quot;GroupName&quot;</span><span class="p">]</span>
-        <span class="n">outfile</span><span class="p">[</span><span class="n">treeName</span><span class="p">]</span> <span class="o">=</span> <span class="n">uproot</span><span class="o">.</span><span class="n">newtree</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="s2">&quot;float32&quot;</span>
-                                            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">out_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()})</span>
-        <span class="n">outfile</span><span class="p">[</span><span class="n">treeName</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">out_dict</span><span class="p">)</span></div>
+            <span class="n">workSet</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">outname</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span></div>
 </pre></div>
 
           </div>
