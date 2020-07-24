@@ -84,10 +84,11 @@ NBINS_2D = 50
 stob2d = np.linspace(0.0, 1.0, NBINS_2D + 1)
 
 output = MVAPlotter(outname, GROUP_NAMES, lumi)
+
 output.set_show(args.show)
 gSet = output.get_sample()
 
-output.write_out("preSelection_BDT.2020.07.14.root", INPUT_TREE)
+output.write_out("preSelection_BDT.2020.07.14", INPUT_TREE)
 output.plot_fom("Signal", ["Background"], "BDT.Signal", stobBins, "")
 output.make_roc("Signal", ["FourTop", "Background"], "Signal", "SignalvsAll")
 output.print_info("BDT.Signal", groupOrdered)
@@ -114,4 +115,4 @@ output.plot_func_2d("FourTop", "BDT.Background", "BDT.FourTop",
 # output.apply_cut("BDT.FourTop>{}".format(maxSBVal[2]))
 # output.apply_cut("BDT.Background>{}".format(maxSBVal[1]))
 
-# output.write_out("postSelection_BDT.2020.06.03_SignalSingle.root", inputTree)
+# output.write_out("postSelection_BDT.2020.06.03_SignalSingle")

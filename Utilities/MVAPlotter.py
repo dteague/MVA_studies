@@ -61,7 +61,7 @@ class MVAPlotter(object):
             else:
                 self.work_set.insert(1, "BDT.{}".format(group),
                                      self.work_set[group])
-                self.work_set.drop(columns=group, inplace=True)
+            self.work_set.drop(columns=group, inplace=True)
 
     def __len__(self):
         return len(self.groups)
@@ -84,6 +84,7 @@ class MVAPlotter(object):
           name(string): Name of variable for the DataFrame
           arr(numpy.ndarray): Array of variable values for the DataFrame
         """
+
         if len(arr) != len(self.work_set):
             print("bad!")
             sys.exit()
@@ -508,7 +509,7 @@ class MVAPlotter(object):
             plt.show()
             plt.close()
 
-    def write_out(self, filename, input_tree, chan="SS"):
+    def write_out(self, filename, chan="SS"):
         """**Write DataFrame out to ROOT file compatible with VVPlotter**
 
         Args:
@@ -516,65 +517,17 @@ class MVAPlotter(object):
           input_tree(string): input_tree filename used for getting sumweight graphs
           chan(string, optional): Folder plots are put into, defaults to "SS"
         """
-        rm_groups = ["Unnamed: 0", "GroupName", "classID", "finalWeight",
-                     "newWeight"]
-        # with uproot.open(input_tree) as f:
-        #     for name, hist in f.items():
-        #         if "sumweight" not in name.decode():
-        #             continue
-        #         sample = key.GetName()[10:]
-        #         sumweights[sample] = key.ReadObj().GetBinContent(1)
-        #         sumweight_file.Close()
-        #         print(name)
-
-        import ROOT
-        sumweight_file = ROOT.TFile(input_tree)
-        sumweights = dict()
-        for key in sumweight_file.GetListOfKeys():
-            if "sumweight" not in key.GetName():
-                continue
-            sample = key.GetName()[10:]
-            sumweights[sample] = key.ReadObj().GetBinContent(1)
-        sumweight_file.Close()
-
-        group_names = np.unique(self.work_set["GroupName"])
-        var_info = dict()
-        for var_name in list(set(self.work_set.columns) - set(rm_groups)):
-            var = self.work_set[var_name]
-            var_info[var_name] = [min(var), max(var),
-                                  np.array_equal(var, var.astype(int))]
-        outfile = ROOT.TFile("{}/{}".format(self.save_dir, filename), "RECREATE")
-        for group in group_names:
-            work_dir = outfile.mkdir(group)
-            work_dir.cd()
-            work_set = self.work_set[self.work_set["GroupName"] == group]
-            work_weight = work_set["weight"]
-            for var_name, var_details in var_info.items():
-                bot = math.floor(var_details[0])
-                n_digits = math.floor(math.log10(var_details[1]))
-                top = round(var_details[1]+0.5*pow(10, n_digits))
-
-                if var_details[2]:
-                    hist = ROOT.TH1F("{}_{}".format(var_name, chan),
-                                     "{}_{}".format(var_name, chan),
-                                     int(top-bot), bot, top)
-                else:
-                    hist = ROOT.TH1F("{}_{}".format(var_name, chan),
-                                     "{}_{}".format(var_name, chan),
-                                     1024, bot, top)
-
-                for vals, weight in zip(work_set[var_name], work_weight):
-                    if "Pt" in var_name and vals < 5:
-                        continue
-                    hist.Fill(vals, weight)
-                hist.Write()
-            sumweight_hist = ROOT.TH1D("sumweights", "sumweights",
-                                       10, 0, 1)
-            sumweight_hist.SetBinContent(1, sumweights[group])
-            sumweight_hist.Scale(1/self._ratio)
-            sumweight_hist.Write()
-            outfile.cd()
-        outfile.Write()
+        rm_groups = ["GroupName", "classID", "finalWeight"]
+        write_set = self.work_set.drop(columns=rm_groups)
+        type_by_name = {name: "float32" if name[0] != "N" else "int"
+                        for name in write_set.keys()}
+        with uproot.recreate("{}/{}.root".format(self.save_dir, filename),
+                             compression=uproot.ZLIB(4)) as outfile:
+            for group in np.unique(self.work_set.GroupName):
+                tree_name = "{}_{}".format(group, chan)
+                outfile[tree_name] = uproot.newtree(type_by_name)
+                outfile[tree_name].extend(
+                    write_set[self.work_set.GroupName == group].to_dict("list"))
 
     def print_info(self, var, subgroups):
         """**Print out basic statistics information for a variable**

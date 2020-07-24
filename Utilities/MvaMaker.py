@@ -187,14 +187,9 @@ class XGBoostMaker:
           outname: Directory where files will be written
 
         """
-        with uproot.recreate("{}/BDT.root".format(outname)) as outfile:
-            self._write_root(outfile, "TestTree", self.test_set,
-                             self.pred_test)
-            self._write_root(outfile, "TrainTree", self.train_set,
-                             self.pred_train)
-            self._write_pandas("{}/testTree.pkl.gz".format(outname),
+        self._write_pandas("{}/testTree.pkl.gz".format(outname),
                                self.test_set, self.pred_test)
-            self._write_pandas("{}/trainTree.pkl.gz".format(outname),
+        self._write_pandas("{}/trainTree.pkl.gz".format(outname),
                                self.train_set, self.pred_train)
 
     # Private Functions
@@ -232,20 +227,3 @@ class XGBoostMaker:
         for key, arr in prediction.items():
             workSet.insert(0, key, arr)
             workSet.to_pickle(outname, compression="gzip")
-
-    def _write_root(self, outfile, treeName, workSet, prediction):
-        """**Write out as a rootfile**
-
-        Args:
-          outfile(string): Name of file to write
-          treeName(string): Name of tree to put data (for test or train)
-          workSet(pandas.DataFrame): DataFrame of variables to write out
-          prediction(pandas.DataFrame): DataFrame of BDT predictions
-
-        """
-        out_dict = {name: workSet[name] for name in self._all_vars}
-        out_dict.update(prediction)
-        del out_dict["GroupName"]
-        outfile[treeName] = uproot.newtree({name: "float32"
-                                            for name in out_dict.keys()})
-        outfile[treeName].extend(out_dict)

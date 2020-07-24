@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@0.2.1
+  python: medasync/python@2.0.0
 
 jobs:
   test:
@@ -50,11 +50,34 @@ jobs:
       - run:
           name: Deploy docs to gh-pages branch
           command: gh-pages --dotfiles --message "[ci skip] Updates" --dist docs/build/html
-  
+
+  format:
+    parameters:
+      py_version:
+        description: Version of python to use
+        type: string
+        default: '3.6'
+      source_root:
+        description: Path to the root of source code
+        type: string
+        default: Utilities
+    executor:
+      name: python_only
+      py_version: << parameters.py_version >>
+    steps:
+      - medasync_misc/attach_repo
+      - check_formatting:
+          source_root: << parameters.source_root >>
+      - check_import_order:
+          source_root: << parameters.source_root >>
+      - run_prospector
+
+
 workflows:
   build:
     jobs:
       - test
+      - format
       - docs-build
       - docs-deploy:
           requires:
