@@ -1,8 +1,9 @@
 version: 2.1
 
 orbs:
+  misc: medasync/misc@0.0.2
   python: medasync/python@2.0.0
-
+    
 jobs:
   test:
     docker:
