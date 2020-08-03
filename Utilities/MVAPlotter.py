@@ -279,7 +279,7 @@ class MVAPlotter(object):
         plt.savefig("%s/%s%s.png" % (self.save_dir, var, extra_name))
         if self.do_show:
             plt.show()
-            plt.close()
+        plt.close()
 
     def plot_func_2d(self, samples, var1, var2, bins1, bins2, name,
                      lines=None):
@@ -312,7 +312,7 @@ class MVAPlotter(object):
         plt.savefig("%s/2D_%s.png" % (self.save_dir, name))
         if self.do_show:
             plt.show()
-            plt.close()
+        plt.close()
 
     def get_fom(self, sig, bkg, var, bins, sb_denom=True, reverse=False):
         """**Return FoM histogram**
@@ -326,7 +326,7 @@ class MVAPlotter(object):
           reverse(bool, optional): if True, calculates FoM using LESS than not greater than, defaults to False
 
         Returns:
-          rtype:
+          list: histogram of the Figure of merit (only weights)
 
         """
         drt = 1 if not reverse else -1
@@ -339,8 +339,7 @@ class MVAPlotter(object):
         else:
             n_tot = [np.sum(bkg_hist[i:])+np.sum(sig_hist[i:])
                      for i in range(len(bins))]
-        return [s/math.sqrt(t) if t > 0 else 0
-                for s, t in zip(n_sig, n_tot)][::drt]
+        return [s/math.sqrt(t) if t > 0 else 0 for s, t in zip(n_sig, n_tot)][::drt]
 
     def plot_fom(self, sig, bkg, var, bins, extra_name="", sb_denom=True,
                  reverse=False):
@@ -392,10 +391,10 @@ class MVAPlotter(object):
         ax.legend()
         ax2.legend()
         fig.tight_layout()
-        plt.savefig("%s/StoB_%s.png" % (self.save_dir, extra_name))
+        plt.savefig("%s/StoB%s.png" % (self.save_dir, extra_name))
         if self.do_show:
             plt.show()
-            plt.close()
+        plt.close()
         return (fom, fom_maxbin)
 
     def plot_fom_2d(self, sig, var1, var2, bins1, bins2, extra_name=""):
@@ -477,23 +476,20 @@ class MVAPlotter(object):
         Args:
           sig(string): Primary group to be plotted
           bkg(string): Other groups to be plotted against sig
-          var(string): Variable used to plot ROC curve
+          var(string): Variable used to plot ROC curve (name of group)
           extra_name(string, optional): name to append to filename, defaults to ""
         """
-        # TODO(dylan) Need to generalize past just BDT variables
+        
         final_set = pd.concat((self.get_sample(sig), self.get_sample(bkg)))
         pred = final_set["BDT.{}".format(var)].array
         if extra_name:
             extra_name = "_{}".format(extra_name)
 
-        if var != sig:
-            truth = [0 if i == self.groups.index(sig) else 1
-                     for i in final_set["classID"].array]
-        else:
-            truth = [1 if i == self.groups.index(sig) else 0
-                     for i in final_set["classID"].array]
-            fpr, tpr, _ = roc_curve(truth, pred)
-            auc = roc_auc_score(truth, pred)
+
+        truth = [1 if i == self.groups.index(sig) else 0
+                 for i in final_set["classID"].array]
+        fpr, tpr, _ = roc_curve(truth, pred)
+        auc = roc_auc_score(truth, pred)
 
         # plot
         fig, ax = plt.subplots()
@@ -507,7 +503,7 @@ class MVAPlotter(object):
                                                         extra_name))
         if self.do_show:
             plt.show()
-            plt.close()
+        plt.close()
 
     def write_out(self, filename, chan="SS"):
         """**Write DataFrame out to ROOT file compatible with VVPlotter**
