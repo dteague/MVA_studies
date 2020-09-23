@@ -3,12 +3,11 @@
    :synopsis: Takes MvaMaker output and creates graphs
 .. moduleauthor:: Dylan Teague
 """
-
 import sys
+from os.path import isfile
 import math
 import numpy as np
 import pandas as pd
-import uproot
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 import xgboost as xgb
@@ -26,7 +25,7 @@ class MVAPlotter(object):
       color_dict(dict: dict): Dictionary for setting line color for groups
       work_set(pandas.DataFrame): DataFrame with event/variable data
     """
-    def __init__(self, workdir, groups, lumi=140000, is_train=False):
+    def __init__(self, workdir, groups, groupMembers, lumi=140000, is_train=False):
         self.groups = list(groups)
         self.do_show = False
         self.save_dir = workdir
@@ -35,19 +34,22 @@ class MVAPlotter(object):
         #  ['#CC0000', '#99FF00', '#FFCC00', '#3333FF']
         #  ['#462066', '#FFB85F', '#FF7A5A', '#00AAA0']
 
-        self.color_dict = {grp: col for grp, col in zip(groups, colors)}
+        self.color_dict = {grp: col for grp, col in zip(self.groups, colors)}
         self.color_dict["all"] = colors[len(self.groups)]
+        self.work_set, other = pd.DataFrame(), pd.DataFrame()
+        work_dir = workdir + "/train/" if is_train else workdir + "/test/"
+        other_dir = workdir + "/test/" if is_train else workdir + "/train/"
 
-        if is_train:
-            self.work_set = pd.read_pickle("{}/trainTree.pkl.gz".format(workdir))
-            other = pd.read_pickle("{}/testTree.pkl.gz".format(workdir))
-        else:
-            self.work_set = pd.read_pickle("{}/testTree.pkl.gz".format(workdir))
-            other = pd.read_pickle("{}/trainTree.pkl.gz".format(workdir))
+        for group in groupMembers:
+            filename = "{}.parquet".format(group)
+            if not isfile(work_dir + filename) or not isfile(other_dir + filename):
+                continue
+            self.work_set = pd.concat(
+                (self.work_set, pd.read_parquet(work_dir + filename)))
+            other = pd.concat((other, pd.read_parquet(other_dir + filename)))
 
         self._ratio = (1. + 1.*len(other)/len(self.work_set))
-        self.work_set.insert(1, "finalWeight", self._ratio * lumi \
-                             * self.work_set["newWeight"])
+        self.work_set["finalWeight"] *= self._ratio
 
         # was this multilcass or multiple binaries (maybe outdated)
         multirun = all(elem in self.work_set for elem in self.groups)
@@ -62,6 +64,7 @@ class MVAPlotter(object):
                 self.work_set.insert(1, "BDT.{}".format(group),
                                      self.work_set[group])
             self.work_set.drop(columns=group, inplace=True)
+        print(self.work_set.columns)
 
     def __len__(self):
         return len(self.groups)
